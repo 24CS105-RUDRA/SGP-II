@@ -22,6 +22,50 @@ export interface ClassFacultyAssignment {
   updated_at: string
 }
 
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message
+  if (typeof error === 'string') return error
+  if (error && typeof error === 'object') {
+    const maybeError = error as { message?: string; code?: string; details?: string; hint?: string }
+    if (maybeError.message) return maybeError.message
+    const parts = [maybeError.code, maybeError.details, maybeError.hint].filter(Boolean)
+    if (parts.length > 0) return parts.join(' | ')
+  }
+  try {
+    return JSON.stringify(error)
+  } catch {
+    return 'Unknown error'
+  }
+}
+
+async function getClassFacultyFallback(standard: string, division: string) {
+  const { data, error } = await supabase
+    .from('faculty')
+    .select('id, faculty_name, phone_number, subject, assigned_standard, assigned_division')
+    .eq('assigned_standard', standard)
+    .eq('assigned_division', division)
+
+  if (error) {
+    const message = getErrorMessage(error)
+    console.warn('[v0] Fallback faculty query failed:', message)
+    return { success: false, error: message }
+  }
+
+  const transformedData = (data || []).map((faculty: any) => ({
+    id: `${faculty.id}-${standard}-${division}`,
+    standard,
+    division,
+    faculty_id: faculty.id,
+    faculty_name: faculty.faculty_name || 'Unknown',
+    phone_number: faculty.phone_number || '',
+    subject: faculty.subject || 'General',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  }))
+
+  return { success: true, data: transformedData }
+}
+
 // Get all faculty for a specific class
 export async function getClassFaculty(standard: string, division: string) {
   try {
@@ -34,8 +78,10 @@ export async function getClassFaculty(standard: string, division: string) {
       .eq('division', division)
 
     if (error) {
-      console.error('[v0] Error fetching class faculty:', error)
-      return { success: false, error: error.message }
+      const message = getErrorMessage(error)
+      console.warn('[v0] class_faculty_assignments unavailable, using fallback:', message)
+      console.log('[v0] Trying fallback query using faculty.assigned_standard/assigned_division')
+      return await getClassFacultyFallback(standard, division)
     }
 
     console.log('[v0] Assignments found:', data?.length || 0)
@@ -54,8 +100,9 @@ export async function getClassFaculty(standard: string, division: string) {
       .in('id', facultyIds)
 
     if (facultyError) {
-      console.error('[v0] Error fetching faculty details:', facultyError)
-      return { success: false, error: facultyError.message }
+      const message = getErrorMessage(facultyError)
+      console.warn('[v0] Error fetching faculty details:', message)
+      return { success: false, error: message }
     }
 
     // Map faculty details to assignments
@@ -75,8 +122,14 @@ export async function getClassFaculty(standard: string, division: string) {
     console.log('[v0] Faculty fetched for class:', transformedData.length)
     return { success: true, data: transformedData }
   } catch (error) {
-    console.error('[v0] Error fetching class faculty:', error)
-    return { success: false, error: 'Failed to fetch class faculty' }
+    const message = getErrorMessage(error)
+    console.warn('[v0] Error fetching class faculty:', message)
+    console.log('[v0] Retrying with fallback after exception')
+    const fallbackResult = await getClassFacultyFallback(standard, division)
+    if (fallbackResult.success) {
+      return fallbackResult
+    }
+    return { success: false, error: message || 'Failed to fetch class faculty' }
   }
 }
 
