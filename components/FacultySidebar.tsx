@@ -11,7 +11,6 @@ import {
   CheckCircle2,
   Upload,
   FileText,
-  Calendar,
   ImageIcon,
   Menu,
   X,
@@ -33,7 +32,6 @@ export function FacultySidebar({ activeSection }: FacultySidebarProps) {
     { id: 'attendance', label: 'Mark Attendance', icon: CheckCircle2 },
     { id: 'homework', label: 'Post Homework', icon: FileText },
     { id: 'study-materials', label: 'Upload Materials', icon: Upload },
-    { id: 'timetable', label: 'Manage Timetable', icon: Calendar },
     { id: 'gallery', label: 'Upload Gallery', icon: ImageIcon },
   ]
 

@@ -15,7 +15,6 @@ import {
 } from '@/components/ui/select'
 import { AlertCircle, Loader2, Eye, EyeOff } from 'lucide-react'
 import { loginUser } from '@/lib/actions/auth'
-import { resetAdminUser } from '@/lib/actions/admin-reset'
 
 const BATCH_YEARS = [
   '2025-26',
@@ -23,10 +22,6 @@ const BATCH_YEARS = [
   '2027-28',
   '2028-29',
   '2029-30',
-]
-
-const FACULTY_ROLES = [
-  'Faculty'
 ]
 
 export default function LoginPage() {
@@ -38,8 +33,6 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string>('')
   const [loading, setLoading] = useState(false)
-  const [resetting, setResetting] = useState(false)
-  const [resetMessage, setResetMessage] = useState<string>('')
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -49,12 +42,6 @@ export default function LoginPage() {
     // Validate inputs
     if (role === 'student' && !year) {
       setError('Batch year is required for students')
-      setLoading(false)
-      return
-    }
-
-    if (role === 'faculty' && !year) {
-      setError('Role (Staff/Faculty) is required')
       setLoading(false)
       return
     }
@@ -106,24 +93,6 @@ export default function LoginPage() {
     }, 500)
   }
 
-  const handleResetAdmin = async () => {
-    setResetting(true)
-    setResetMessage('')
-    setError('')
-
-    const result = await resetAdminUser()
-
-    if (result.success) {
-      setResetMessage(result.message || 'Admin user has been reset successfully!')
-      setUsername('admin')
-      setPassword('admin123')
-    } else {
-      setError(result.error || 'Failed to reset admin user')
-    }
-
-    setResetting(false)
-  }
-
   return (
     <main className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-background flex items-center justify-center p-4">
       <div className="w-full max-w-md">
@@ -146,14 +115,6 @@ export default function LoginPage() {
                 <div className="flex items-gap gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/30">
                   <AlertCircle className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
                   <p className="text-sm text-destructive">{error}</p>
-                </div>
-              )}
-
-              {/* Reset Message */}
-              {resetMessage && (
-                <div className="flex items-gap gap-2 p-3 rounded-lg bg-green-500/10 border border-green-500/30">
-                  <AlertCircle className="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-green-600 dark:text-green-400">{resetMessage}</p>
                 </div>
               )}
 
@@ -188,27 +149,6 @@ export default function LoginPage() {
                       {BATCH_YEARS.map((batchYear) => (
                         <SelectItem key={batchYear} value={batchYear}>
                           {batchYear}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              {/* Faculty Role - For Faculty */}
-              {role === 'faculty' && (
-                <div className="space-y-2">
-                  <Label htmlFor="faculty-role" className="text-foreground font-semibold">
-                    Role
-                  </Label>
-                  <Select value={year} onValueChange={setYear}>
-                    <SelectTrigger id="faculty-role" className="bg-background border-border">
-                      <SelectValue placeholder="Select role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {FACULTY_ROLES.map((facultyRole) => (
-                        <SelectItem key={facultyRole} value={facultyRole}>
-                          {facultyRole}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -262,28 +202,8 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              {/* Reset Admin Button (only show on admin role) */}
-              {role === 'admin' && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full bg-transparent text-xs"
-                  onClick={handleResetAdmin}
-                  disabled={resetting || loading}
-                >
-                  {resetting ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Resetting Admin...
-                    </>
-                  ) : (
-                    'Reset Admin Credentials'
-                  )}
-                </Button>
-              )}
-
               {/* Login Button */}
-              <Button type="submit" className="w-full" disabled={loading || resetting}>
+              <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />

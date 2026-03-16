@@ -35,6 +35,24 @@ export default function StudentManagementPage() {
   const [autoAssigning, setAutoAssigning] = useState(false)
   const [message, setMessage] = useState<string>('')
 
+  const fetchFacultyProfileWithRetry = async (userId: string, retries = 1) => {
+    let lastResult: Awaited<ReturnType<typeof getFacultyByUserId>> | null = null
+
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      const result = await getFacultyByUserId(userId)
+      lastResult = result
+
+      const isFetchFailure = typeof result.error === 'string' && result.error.toLowerCase().includes('fetch failed')
+      if (!isFetchFailure || attempt === retries) {
+        return result
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 300))
+    }
+
+    return lastResult || { success: false, error: 'Failed to fetch faculty profile' }
+  }
+
   useEffect(() => {
     const initPage = async () => {
       const session = localStorage.getItem('userSession')
@@ -49,7 +67,7 @@ export default function StudentManagementPage() {
       setUser(userData)
 
       // Fetch faculty profile to get faculty ID
-      const result = await getFacultyByUserId(userData.id)
+      const result = await fetchFacultyProfileWithRetry(userData.id)
       if (result.success && result.data) {
         setFacultyId(result.data.id)
         // Fetch assigned students

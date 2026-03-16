@@ -121,7 +121,8 @@ export default function AdminGalleryPage() {
       })
 
       if (!uploadRes.ok) {
-        throw new Error('Failed to upload cover image')
+        const errorData = await uploadRes.json().catch(() => ({ error: 'Failed to upload cover image' }))
+        throw new Error(errorData.error || 'Failed to upload cover image')
       }
 
       const { url: coverImageUrl } = await uploadRes.json()
@@ -152,7 +153,7 @@ export default function AdminGalleryPage() {
       }
     } catch (error) {
       console.error('[v0] Event creation error:', error)
-      alert('Failed to create event')
+      alert('Failed to create event: ' + (error instanceof Error ? error.message : 'Unknown error'))
     } finally {
       setUploading(false)
     }

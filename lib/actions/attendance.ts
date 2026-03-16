@@ -34,6 +34,10 @@ interface MarkAttendanceData {
   remarks?: string
 }
 
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+}
+
 export async function getStudentRecordByUserId(userId: string): Promise<{
   success: boolean
   data?: { id: string; standard: string; division: string }
@@ -227,8 +231,23 @@ export async function markBulkAttendance(
   error?: string
 }> {
   try {
+    if (!records || records.length === 0) {
+      return { success: false, error: 'No attendance records provided' }
+    }
+
+    const normalizedRecords = records.map((record) => ({
+      ...record,
+      student_id: (record.student_id || '').trim(),
+    }))
+
+    const malformedRecords = normalizedRecords.filter((record) => !isUuid(record.student_id))
+    if (malformedRecords.length > 0) {
+      console.error('[v0] Malformed student IDs in attendance records:', malformedRecords)
+      return { success: false, error: `${malformedRecords.length} record(s) have invalid student IDs` }
+    }
+
     // Validate that all students exist
-    const studentIds = records.map(r => r.student_id)
+    const studentIds = normalizedRecords.map((record) => record.student_id)
     const { data: existingStudents, error: studentError } = await supabaseAdmin
       .from('students')
       .select('id')
@@ -239,8 +258,8 @@ export async function markBulkAttendance(
       return { success: false, error: 'Error validating students' }
     }
 
-    const validStudentIds = new Set(existingStudents?.map(s => s.id) || [])
-    const invalidRecords = records.filter(r => !validStudentIds.has(r.student_id))
+    const validStudentIds = new Set(existingStudents?.map((student) => student.id) || [])
+    const invalidRecords = normalizedRecords.filter((record) => !validStudentIds.has(record.student_id))
 
     if (invalidRecords.length > 0) {
       console.error('[v0] Invalid students in attendance records:', invalidRecords)
@@ -252,7 +271,7 @@ export async function markBulkAttendance(
       .from('attendance')
       .delete()
       .in('student_id', studentIds)
-      .eq('attendance_date', records[0].attendance_date)
+      .eq('attendance_date', normalizedRecords[0].attendance_date)
 
     if (deleteError) {
       console.error('[v0] Error deleting existing records:', deleteError)
@@ -262,7 +281,7 @@ export async function markBulkAttendance(
     // Then insert the new records
     const { error } = await supabase
       .from('attendance')
-      .insert(records)
+      .insert(normalizedRecords)
 
     if (error) {
       console.error('[v0] Attendance insert error:', error)

@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Search, Edit2, Trash2, Plus } from 'lucide-react'
-import { getAllFaculty, createFaculty, deleteFaculty } from '@/lib/actions/faculty'
+import { getAllFaculty, createFaculty, updateFaculty, deleteFaculty } from '@/lib/actions/faculty'
 
 interface FacultyProfile {
   id: string
@@ -35,6 +35,7 @@ export default function FacultyProfilesPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [faculty, setFaculty] = useState<FacultyProfile[]>([])
   const [showForm, setShowForm] = useState(false)
+  const [editingFacultyId, setEditingFacultyId] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [formData, setFormData] = useState({
     username: '',
@@ -131,6 +132,78 @@ export default function FacultyProfilesPage() {
     }
   }
 
+  const resetForm = () => {
+    setFormData({
+      username: '',
+      password: '',
+      full_name: '',
+      email: '',
+      employee_id: '',
+      department: 'Mathematics',
+      subject: '',
+      phone_number: '',
+      assigned_standard: '',
+      assigned_division: '',
+    })
+  }
+
+  const handleEditFaculty = (member: FacultyProfile) => {
+    setEditingFacultyId(member.id)
+    setFormData({
+      username: member.user?.username || '',
+      password: '',
+      full_name: member.faculty_name || member.user?.full_name || '',
+      email: member.user?.email || '',
+      employee_id: member.employee_id || '',
+      department: member.department || 'Mathematics',
+      subject: member.subject || '',
+      phone_number: member.phone_number || '',
+      assigned_standard: member.assigned_standard || '',
+      assigned_division: member.assigned_division || '',
+    })
+    setShowForm(true)
+  }
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!editingFacultyId) return
+    if (!formData.full_name || !formData.email) {
+      alert('Please fill in all required fields')
+      return
+    }
+
+    setSubmitting(true)
+
+    try {
+      const result = await updateFaculty(editingFacultyId, {
+        full_name: formData.full_name,
+        email: formData.email,
+        employee_id: formData.employee_id,
+        department: formData.department,
+        subject: formData.subject,
+        phone_number: formData.phone_number,
+        assigned_standard: formData.assigned_standard,
+        assigned_division: formData.assigned_division,
+      })
+
+      if (result.success) {
+        alert('Faculty updated successfully!')
+        setEditingFacultyId(null)
+        resetForm()
+        setShowForm(false)
+        await fetchFaculty()
+      } else {
+        alert(`Error: ${result.error}`)
+      }
+    } catch (error) {
+      console.error('[v0] Update error:', error)
+      alert('Failed to update faculty')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   if (loading) return <div className="flex items-center justify-center min-h-screen">Loading...</div>
   if (!user) return null
 
@@ -151,7 +224,7 @@ export default function FacultyProfilesPage() {
             <h1 className="text-3xl font-bold text-primary">Faculty Management</h1>
             <Button onClick={() => setShowForm(!showForm)} className="bg-primary hover:bg-primary/90 flex items-center gap-2">
               <Plus className="w-4 h-4" />
-              Add New Faculty
+              {editingFacultyId ? 'Edit Faculty' : 'Add New Faculty'}
             </Button>
           </div>
 
@@ -159,18 +232,22 @@ export default function FacultyProfilesPage() {
           {showForm && (
             <Card className="mb-8 border-2 border-accent">
               <CardHeader>
-                <CardTitle>Add New Faculty</CardTitle>
+                <CardTitle>{editingFacultyId ? 'Edit Faculty' : 'Add New Faculty'}</CardTitle>
               </CardHeader>
               <CardContent>
-                <form onSubmit={handleSubmit} className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <Label>Username *</Label>
-                    <Input value={formData.username} onChange={(e) => setFormData({...formData, username: e.target.value})} required />
-                  </div>
-                  <div>
-                    <Label>Password *</Label>
-                    <Input type="password" value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} required />
-                  </div>
+                <form onSubmit={editingFacultyId ? handleSaveEdit : handleSubmit} className="grid md:grid-cols-2 gap-4">
+                  {!editingFacultyId && (
+                    <>
+                      <div>
+                        <Label>Username *</Label>
+                        <Input value={formData.username} onChange={(e) => setFormData({...formData, username: e.target.value})} required />
+                      </div>
+                      <div>
+                        <Label>Password *</Label>
+                        <Input type="password" value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} required />
+                      </div>
+                    </>
+                  )}
                   <div>
                     <Label>Full Name *</Label>
                     <Input value={formData.full_name} onChange={(e) => setFormData({...formData, full_name: e.target.value})} required />
@@ -237,9 +314,13 @@ export default function FacultyProfilesPage() {
                   </div>
                   <div className="md:col-span-2 flex gap-3">
                     <Button type="submit" disabled={submitting} className="bg-accent hover:bg-accent/90">
-                      {submitting ? 'Creating...' : 'Add Faculty'}
+                      {submitting ? (editingFacultyId ? 'Saving...' : 'Creating...') : (editingFacultyId ? 'Save Changes' : 'Add Faculty')}
                     </Button>
-                    <Button type="button" variant="outline" onClick={() => setShowForm(false)}>
+                    <Button type="button" variant="outline" onClick={() => {
+                      setShowForm(false)
+                      setEditingFacultyId(null)
+                      resetForm()
+                    }}>
                       Cancel
                     </Button>
                   </div>
@@ -292,7 +373,7 @@ export default function FacultyProfilesPage() {
                         <td className="py-3 px-4 text-sm font-semibold">{member.assigned_standard && member.assigned_division ? `${member.assigned_standard}-${member.assigned_division}` : 'Not Assigned'}</td>
                         <td className="py-3 px-4 text-sm">{member.user?.email || 'N/A'}</td>
                         <td className="py-3 px-4 flex gap-2">
-                          <button className="p-2 rounded hover:bg-accent/20 text-accent">
+                          <button onClick={() => handleEditFaculty(member)} className="p-2 rounded hover:bg-accent/20 text-accent">
                             <Edit2 className="w-4 h-4" />
                           </button>
                           <button onClick={() => handleDelete(member.id)} className="p-2 rounded hover:bg-red-100 dark:hover:bg-red-950/30 text-red-600">

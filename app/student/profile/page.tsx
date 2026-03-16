@@ -5,9 +5,14 @@ import { useRouter } from 'next/navigation'
 import { StudentSidebar } from '@/components/StudentSidebar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
 import { Mail, Phone, MapPin, Calendar, Award } from 'lucide-react'
+import { changePassword } from '@/lib/actions/auth'
 
 interface UserSession {
+  id: string
   username: string
   name: string
   role: string
@@ -18,6 +23,12 @@ export default function StudentProfile() {
   const router = useRouter()
   const [user, setUser] = useState<UserSession | null>(null)
   const [loading, setLoading] = useState(true)
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  })
+  const [passwordSubmitting, setPasswordSubmitting] = useState(false)
 
   useEffect(() => {
     const session = localStorage.getItem('userSession')
@@ -34,6 +45,35 @@ export default function StudentProfile() {
 
   if (loading) return <div>Loading...</div>
   if (!user) return null
+
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
+      alert('Please fill in all password fields')
+      return
+    }
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      alert('New password and confirm password do not match')
+      return
+    }
+
+    setPasswordSubmitting(true)
+    try {
+      const result = await changePassword(user.id, passwordData.currentPassword, passwordData.newPassword)
+      if (result.success) {
+        alert('Password changed successfully!')
+        setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' })
+      } else {
+        alert(`Error: ${result.error}`)
+      }
+    } catch (error) {
+      alert('Failed to change password')
+    } finally {
+      setPasswordSubmitting(false)
+    }
+  }
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -165,6 +205,50 @@ export default function StudentProfile() {
                   <p className="text-lg font-semibold">rajesh@email.com</p>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Password Reset */}
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>Change Password</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handlePasswordChange} className="space-y-4 max-w-xl">
+                <div>
+                  <Label htmlFor="currentPassword">Current Password</Label>
+                  <Input
+                    id="currentPassword"
+                    type="password"
+                    value={passwordData.currentPassword}
+                    onChange={(e) => setPasswordData((prev) => ({ ...prev, currentPassword: e.target.value }))}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="newPassword">New Password</Label>
+                  <Input
+                    id="newPassword"
+                    type="password"
+                    value={passwordData.newPassword}
+                    onChange={(e) => setPasswordData((prev) => ({ ...prev, newPassword: e.target.value }))}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    value={passwordData.confirmPassword}
+                    onChange={(e) => setPasswordData((prev) => ({ ...prev, confirmPassword: e.target.value }))}
+                  />
+                </div>
+
+                <Button type="submit" disabled={passwordSubmitting}>
+                  {passwordSubmitting ? 'Updating...' : 'Update Password'}
+                </Button>
+              </form>
             </CardContent>
           </Card>
         </div>

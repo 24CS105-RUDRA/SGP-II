@@ -12,7 +12,6 @@ import {
   Clipboard, 
   DollarSign, 
   FileText, 
-  Calendar,
   BookOpen,
   Users,
   AlertCircle,
@@ -88,13 +87,6 @@ export default function StudentDashboard() {
       link: '/student/study-materials',
       color: 'text-orange-600 dark:text-orange-400',
       bgColor: 'bg-orange-50 dark:bg-orange-950/30'
-    },
-    {
-      title: 'Timetable',
-      icon: <Calendar className="w-12 h-12" />,
-      link: '/student/timetable',
-      color: 'text-cyan-600 dark:text-cyan-400',
-      bgColor: 'bg-cyan-50 dark:bg-cyan-950/30'
     },
     {
       title: 'Homework',

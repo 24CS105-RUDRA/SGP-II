@@ -9,11 +9,16 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Eye, EyeOff, RotateCcw } from 'lucide-react'
+import {
+  getPasswordManagedUsers,
+  resetSingleUserPassword,
+  resetPasswordsByRole,
+} from '@/lib/actions/password-management'
 
 interface User {
   id: string
   name: string
-  type: 'student' | 'faculty'
+  role: 'student' | 'faculty'
   username: string
   email: string
   lastChanged: string
@@ -25,6 +30,11 @@ export default function PasswordManagementPage() {
   const [loading, setLoading] = useState(true)
   const [users, setUsers] = useState<User[]>([])
   const [selectedType, setSelectedType] = useState<'student' | 'faculty'>('student')
+  const [newPassword, setNewPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [activeUserId, setActiveUserId] = useState<string | null>(null)
+  const [searchTerm, setSearchTerm] = useState('')
 
   useEffect(() => {
     const session = localStorage.getItem('userSession')
@@ -36,16 +46,68 @@ export default function PasswordManagementPage() {
     }
 
     setUser(JSON.parse(session))
-    setLoading(false)
+    fetchUsers('student')
   }, [router])
+
+  const fetchUsers = async (type: 'student' | 'faculty') => {
+    setLoading(true)
+    const result = await getPasswordManagedUsers(type)
+    if (result.success) {
+      setUsers(result.data || [])
+    } else {
+      alert(`Error: ${result.error}`)
+    }
+    setLoading(false)
+  }
+
+  const handleSelectType = async (type: 'student' | 'faculty') => {
+    setSelectedType(type)
+    await fetchUsers(type)
+  }
 
   if (loading) return <div>Loading...</div>
   if (!user) return null
 
-  const filteredUsers = users.filter(u => u.type === selectedType)
+  const filteredUsers = users.filter(
+    (u) => u.role === selectedType && u.name.toLowerCase().includes(searchTerm.toLowerCase())
+  )
 
-  const handleResetPassword = (userId: string) => {
-    alert('Password reset link has been sent to the user.')
+  const handleResetPassword = async (userId: string) => {
+    if (!newPassword.trim()) {
+      alert('Please enter a temporary password')
+      return
+    }
+
+    setActiveUserId(userId)
+    const result = await resetSingleUserPassword(userId, newPassword)
+    setActiveUserId(null)
+
+    if (result.success) {
+      alert('Password reset successfully')
+      await fetchUsers(selectedType)
+    } else {
+      alert(`Error: ${result.error}`)
+    }
+  }
+
+  const handleBulkReset = async () => {
+    if (!newPassword.trim()) {
+      alert('Please enter a temporary password')
+      return
+    }
+
+    if (!confirm(`Reset password for all ${selectedType}s?`)) return
+
+    setBusy(true)
+    const result = await resetPasswordsByRole(selectedType, newPassword)
+    setBusy(false)
+
+    if (result.success) {
+      alert(`Password reset successfully for ${result.updatedCount || 0} ${selectedType}(s)`)
+      await fetchUsers(selectedType)
+    } else {
+      alert(`Error: ${result.error}`)
+    }
   }
 
   return (
@@ -63,26 +125,59 @@ export default function PasswordManagementPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Set temporary passwords for users. They will be prompted to change it on first login.
+                Search users by name and set passwords directly for selected users or all users of one role.
               </p>
               <div className="space-y-2">
                 <Label htmlFor="bulk-reset">Select User Type to Reset</Label>
                 <div className="flex gap-3">
                   <Button 
                     variant={selectedType === 'student' ? 'default' : 'outline'}
-                    onClick={() => setSelectedType('student')}
+                    onClick={() => handleSelectType('student')}
+                    disabled={loading || busy}
                   >
                     All Students
                   </Button>
                   <Button 
                     variant={selectedType === 'faculty' ? 'default' : 'outline'}
-                    onClick={() => setSelectedType('faculty')}
+                    onClick={() => handleSelectType('faculty')}
+                    disabled={loading || busy}
                   >
                     All Faculty
                   </Button>
                 </div>
               </div>
-              <Button className="bg-primary hover:bg-primary/90">Send Reset Links</Button>
+
+              <div className="space-y-2">
+                <Label htmlFor="new-password">Temporary Password</Label>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Input
+                      id="new-password"
+                      type={showPassword ? 'text' : 'password'}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="Enter temporary password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <Button
+                    onClick={handleBulkReset}
+                    disabled={busy || loading}
+                    className="bg-primary hover:bg-primary/90"
+                  >
+                    {busy ? 'Resetting...' : 'Reset All'}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Admin-created passwords are set directly without password policy enforcement.
+                </p>
+              </div>
             </CardContent>
           </Card>
 
@@ -94,6 +189,16 @@ export default function PasswordManagementPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
+              <div className="mb-4">
+                <Label htmlFor="search-name" className="text-sm">Search by Name</Label>
+                <Input
+                  id="search-name"
+                  placeholder="Type student/faculty name..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="mt-2"
+                />
+              </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
@@ -115,6 +220,7 @@ export default function PasswordManagementPage() {
                         <td className="py-3 px-4">
                           <button 
                             onClick={() => handleResetPassword(u.id)}
+                            disabled={activeUserId === u.id || busy || loading}
                             className="p-2 hover:bg-primary/10 rounded-lg transition-colors"
                             title="Reset Password"
                           >
@@ -123,6 +229,13 @@ export default function PasswordManagementPage() {
                         </td>
                       </tr>
                     ))}
+                    {filteredUsers.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="py-6 text-center text-muted-foreground">
+                          No users found for this search.
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>

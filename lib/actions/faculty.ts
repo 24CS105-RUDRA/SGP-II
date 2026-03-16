@@ -1,7 +1,6 @@
 'use server'
 
 import { createClient } from '@supabase/supabase-js'
-import bcrypt from 'bcryptjs'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY
@@ -15,6 +14,10 @@ if (!supabaseServiceKey) {
 }
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+async function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
 
 interface FacultyProfile {
   id: string
@@ -52,6 +55,8 @@ export async function createFaculty(data: CreateFacultyData): Promise<{
   error?: string
 }> {
   try {
+    const { default: bcrypt } = await import('bcryptjs')
+
     // Check if username already exists
     const { data: existingUser } = await supabase
       .from('users')
@@ -143,7 +148,7 @@ export async function getFacultyProfile(facultyId: string): Promise<{
       .select(
         `
         *,
-        user_id (
+        user:user_id (
           full_name,
           email,
           username
@@ -174,7 +179,7 @@ export async function getAllFaculty(): Promise<{
       .select(
         `
         *,
-        user_id (
+        user:user_id (
           full_name,
           email,
           username
@@ -212,12 +217,13 @@ export async function updateFaculty(
     }
 
     const facultyUpdates: any = {}
-    if (updates.employee_id) facultyUpdates.employee_id = updates.employee_id
-    if (updates.department) facultyUpdates.department = updates.department
-    if (updates.subject) facultyUpdates.subject = updates.subject
-    if (updates.phone_number) facultyUpdates.phone_number = updates.phone_number
-    if (updates.assigned_standard) facultyUpdates.assigned_standard = updates.assigned_standard
-    if (updates.assigned_division) facultyUpdates.assigned_division = updates.assigned_division
+    if (updates.full_name !== undefined) facultyUpdates.faculty_name = updates.full_name || null
+    if (updates.employee_id !== undefined) facultyUpdates.employee_id = updates.employee_id || null
+    if (updates.department !== undefined) facultyUpdates.department = updates.department || null
+    if (updates.subject !== undefined) facultyUpdates.subject = updates.subject || null
+    if (updates.phone_number !== undefined) facultyUpdates.phone_number = updates.phone_number || null
+    if (updates.assigned_standard !== undefined) facultyUpdates.assigned_standard = updates.assigned_standard || null
+    if (updates.assigned_division !== undefined) facultyUpdates.assigned_division = updates.assigned_division || null
 
     if (Object.keys(facultyUpdates).length > 0) {
       const { error: updateError } = await supabase
@@ -231,8 +237,8 @@ export async function updateFaculty(
     }
 
     const userUpdates: any = {}
-    if (updates.full_name) userUpdates.full_name = updates.full_name
-    if (updates.email) userUpdates.email = updates.email
+    if (updates.full_name !== undefined) userUpdates.full_name = updates.full_name
+    if (updates.email !== undefined) userUpdates.email = updates.email
 
     if (Object.keys(userUpdates).length > 0) {
       const { error: userUpdateError } = await supabase
@@ -287,20 +293,35 @@ export async function getFacultyByUserId(userId: string): Promise<{
   error?: string
 }> {
   try {
-    const { data: faculty, error } = await supabase
-      .from('faculty')
-      .select(
+    let faculty: any = null
+    let error: any = null
+
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const result = await supabase
+        .from('faculty')
+        .select(
+          `
+          *,
+          user:user_id (
+            full_name,
+            email,
+            username
+          )
         `
-        *,
-        user_id (
-          full_name,
-          email,
-          username
         )
-      `
-      )
-      .eq('user_id', userId)
-      .single()
+        .eq('user_id', userId)
+        .single()
+
+      faculty = result.data
+      error = result.error
+
+      const isFetchFailure = typeof error?.message === 'string' && error.message.toLowerCase().includes('fetch failed')
+      if (!isFetchFailure) {
+        break
+      }
+
+      await sleep(250)
+    }
 
     if (error) {
       return { success: false, error: error.message }

@@ -13,6 +13,7 @@ import { getFacultyByUserId } from '@/lib/actions/faculty'
 
 interface Student {
   id: string
+  student_id?: string
   student_name?: string
   roll_number?: string
   standard?: string
@@ -47,6 +48,24 @@ export default function AttendancePage() {
   const standards = ['9', '10', '11', '12']
   const divisions = ['A', 'B', 'C', 'D']
 
+  const fetchFacultyProfileWithRetry = async (userId: string, retries = 1) => {
+    let lastResult: Awaited<ReturnType<typeof getFacultyByUserId>> | null = null
+
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      const result = await getFacultyByUserId(userId)
+      lastResult = result
+
+      const isFetchFailure = typeof result.error === 'string' && result.error.toLowerCase().includes('fetch failed')
+      if (!isFetchFailure || attempt === retries) {
+        return result
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 300))
+    }
+
+    return lastResult || { success: false, error: 'Failed to fetch faculty profile' }
+  }
+
   const fetchStudents = async (standard: string, division: string) => {
     // Fetch students using faculty assignments (includes student names)
     if (facultyId) {
@@ -76,7 +95,7 @@ export default function AttendancePage() {
     // Fetch faculty profile to get assigned class
     const fetchFacultyProfile = async () => {
       try {
-        const result = await getFacultyByUserId(userData.id)
+        const result = await fetchFacultyProfileWithRetry(userData.id)
         if (result.success && result.data) {
           console.log('[v0] Faculty profile:', result.data)
           setFacultyId(result.data.id)
@@ -116,11 +135,13 @@ export default function AttendancePage() {
     })
   }
 
+  const getAttendanceKey = (student: Student) => student.student_id || student.id
+
   const handleMarkAll = () => {
-    const allPresent = students.every((s) => attendance[s.id] === 'present')
+    const allPresent = students.every((s) => attendance[getAttendanceKey(s)] === 'present')
     const newAttendance: typeof attendance = {}
     students.forEach((s) => {
-      newAttendance[s.id] = allPresent ? 'absent' : 'present'
+      newAttendance[getAttendanceKey(s)] = allPresent ? 'absent' : 'present'
     })
     setAttendance(newAttendance)
   }
@@ -139,10 +160,10 @@ export default function AttendancePage() {
 
     try {
       const records = students.map((student) => ({
-        student_id: student.student_id,
+        student_id: getAttendanceKey(student),
         faculty_id: facultyId,
         attendance_date: selectedDate,
-        status: (attendance[student.id] || 'missing') as 'present' | 'absent' | 'missing',
+        status: (attendance[getAttendanceKey(student)] || 'missing') as 'present' | 'absent' | 'missing',
         subject: 'General',
       }))
 
@@ -241,7 +262,7 @@ export default function AttendancePage() {
                   variant="outline"
                   className="bg-primary/10 hover:bg-primary/20 text-primary"
                 >
-                  {students.every((s) => attendance[s.id] === 'present')
+                  {students.every((s) => attendance[getAttendanceKey(s)] === 'present')
                     ? 'Clear All'
                     : 'Mark All Present'}
                 </Button>
@@ -253,13 +274,13 @@ export default function AttendancePage() {
               ) : (
                 students.map((student) => (
                   <div
-                    key={student.id}
-                    onClick={() => handleAttendanceToggle(student.id)}
+                    key={getAttendanceKey(student)}
+                    onClick={() => handleAttendanceToggle(getAttendanceKey(student))}
                     className="p-4 border border-border rounded-lg hover:border-primary cursor-pointer transition-colors flex items-center justify-between hover:bg-accent/10"
                   >
                     <div className="flex items-center gap-4 flex-1">
                       <Checkbox
-                        checked={attendance[student.id] === 'present'}
+                        checked={attendance[getAttendanceKey(student)] === 'present'}
                         onChange={() => {}}
                         className="cursor-pointer"
                       />
@@ -270,12 +291,12 @@ export default function AttendancePage() {
                     </div>
                     <Badge
                       className={
-                        attendance[student.id] === 'present'
+                        attendance[getAttendanceKey(student)] === 'present'
                           ? 'bg-green-600 hover:bg-green-700'
                           : 'bg-red-600 hover:bg-red-700'
                       }
                     >
-                      {attendance[student.id] === 'present' ? 'Present' : 'Absent'}
+                      {attendance[getAttendanceKey(student)] === 'present' ? 'Present' : 'Absent'}
                     </Badge>
                   </div>
                 ))

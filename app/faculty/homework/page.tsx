@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Plus, Trash2 } from 'lucide-react'
 import { createHomework, getHomeworkByFaculty, deleteHomework } from '@/lib/actions/homework'
+import { getFacultyByUserId } from '@/lib/actions/faculty'
 
 interface Faculty {
   id: string
@@ -56,19 +57,22 @@ export default function HomeworkPage() {
     dueDate: '',
   })
 
-  const fetchFacultyData = async (facultyId: string) => {
-    try {
-      const response = await fetch(`/api/faculty/${facultyId}`, {
-        method: 'GET',
-      })
-      if (response.ok) {
-        const data = await response.json()
-        console.log('[v0] Faculty data:', data)
-        setFaculty(data)
+  const fetchFacultyProfileWithRetry = async (userId: string, retries = 1) => {
+    let lastResult: Awaited<ReturnType<typeof getFacultyByUserId>> | null = null
+
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      const result = await getFacultyByUserId(userId)
+      lastResult = result
+
+      const isFetchFailure = typeof result.error === 'string' && result.error.toLowerCase().includes('fetch failed')
+      if (!isFetchFailure || attempt === retries) {
+        return result
       }
-    } catch (error) {
-      console.error('[v0] Error fetching faculty data:', error)
+
+      await new Promise((resolve) => setTimeout(resolve, 300))
     }
+
+    return lastResult || { success: false, error: 'Failed to fetch faculty profile' }
   }
 
   const fetchHomeworks = async (facultyId: string) => {
@@ -94,18 +98,24 @@ export default function HomeworkPage() {
 
     const userData = JSON.parse(session) as User
     setUser(userData)
-    
-    // Fetch faculty profile and homeworks
-    fetchFacultyData(userData.id)
-    
-    setLoading(false)
-  }, [router])
 
-  useEffect(() => {
-    if (faculty?.id) {
-      fetchHomeworks(faculty.id)
+    const loadFacultyAndHomework = async () => {
+      try {
+        const result = await fetchFacultyProfileWithRetry(userData.id)
+        if (result.success && result.data) {
+          console.log('[v0] Faculty profile:', result.data)
+          setFaculty(result.data)
+          await fetchHomeworks(result.data.id)
+        } else {
+          console.error('[v0] Error fetching faculty profile:', result.error)
+        }
+      } finally {
+        setLoading(false)
+      }
     }
-  }, [faculty])
+
+    loadFacultyAndHomework()
+  }, [router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -192,6 +202,7 @@ export default function HomeworkPage() {
             </div>
             <Button
               onClick={() => setShowForm(!showForm)}
+              disabled={!faculty}
               className="bg-primary hover:bg-primary/90 text-primary-foreground flex items-center gap-2"
             >
               <Plus className="w-4 h-4" />

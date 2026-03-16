@@ -46,6 +46,12 @@ interface CreateStudentData {
   date_of_birth?: string
 }
 
+function normalizeOptional(value?: string): string | null {
+  if (value === undefined || value === null) return null
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : null
+}
+
 export async function createStudent(data: CreateStudentData): Promise<{
   success: boolean
   data?: StudentProfile
@@ -119,9 +125,9 @@ export async function createStudent(data: CreateStudentData): Promise<{
         standard: data.standard,
         division: data.division,
         student_name: data.full_name,
-        phone_number: data.phone_number,
-        parent_contact: data.parent_contact,
-        date_of_birth: data.date_of_birth,
+        phone_number: normalizeOptional(data.phone_number),
+        parent_contact: normalizeOptional(data.parent_contact),
+        date_of_birth: normalizeOptional(data.date_of_birth),
       })
       .select()
       .single()
@@ -239,12 +245,12 @@ export async function updateStudent(
 
     // Update student profile
     const studentUpdates: any = {}
-    if (updates.roll_number) studentUpdates.roll_number = updates.roll_number
-    if (updates.phone_number) studentUpdates.phone_number = updates.phone_number
-    if (updates.parent_contact) studentUpdates.parent_contact = updates.parent_contact
-    if (updates.date_of_birth) studentUpdates.date_of_birth = updates.date_of_birth
-    if (updates.standard) studentUpdates.standard = updates.standard
-    if (updates.division) studentUpdates.division = updates.division
+    if (updates.roll_number !== undefined) studentUpdates.roll_number = updates.roll_number
+    if (updates.phone_number !== undefined) studentUpdates.phone_number = normalizeOptional(updates.phone_number)
+    if (updates.parent_contact !== undefined) studentUpdates.parent_contact = normalizeOptional(updates.parent_contact)
+    if (updates.date_of_birth !== undefined) studentUpdates.date_of_birth = normalizeOptional(updates.date_of_birth)
+    if (updates.standard !== undefined) studentUpdates.standard = updates.standard
+    if (updates.division !== undefined) studentUpdates.division = updates.division
 
     if (Object.keys(studentUpdates).length > 0) {
       const { error: updateError } = await supabase
@@ -259,8 +265,8 @@ export async function updateStudent(
 
     // Update user profile if needed
     const userUpdates: any = {}
-    if (updates.full_name) userUpdates.full_name = updates.full_name
-    if (updates.email) userUpdates.email = updates.email
+    if (updates.full_name !== undefined) userUpdates.full_name = updates.full_name
+    if (updates.email !== undefined) userUpdates.email = updates.email
 
     if (Object.keys(userUpdates).length > 0) {
       const { error: userUpdateError } = await supabase

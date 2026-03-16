@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Trash2, CheckCircle, AlertCircle } from 'lucide-react'
+import { Trash2, CheckCircle, AlertCircle, Search } from 'lucide-react'
 import {
   getClassFaculty,
   assignFacultyToClass,
@@ -55,6 +55,7 @@ export default function FacultyClassManagement() {
   const [selectedDivision, setSelectedDivision] = useState('')
   const [classFaculty, setClassFaculty] = useState<ClassFacultyAssignment[]>([])
   const [availableFaculty, setAvailableFaculty] = useState<Faculty[]>([])
+  const [facultySearch, setFacultySearch] = useState('')
   const [selectedFacultyId, setSelectedFacultyId] = useState('')
   const [subject, setSubject] = useState('')
   const [message, setMessage] = useState('')
@@ -163,6 +164,9 @@ export default function FacultyClassManagement() {
   if (!user) return null
 
   const selectedFacultyData = availableFaculty.find(f => f.id === selectedFacultyId)
+  const filteredFaculty = availableFaculty.filter((faculty) =>
+    faculty.faculty_name.toLowerCase().includes(facultySearch.toLowerCase())
+  )
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -228,9 +232,19 @@ export default function FacultyClassManagement() {
                   <p className="text-sm text-muted-foreground mt-1">Click on a faculty member to select and assign</p>
                 </CardHeader>
                 <CardContent>
-                  {availableFaculty.length > 0 ? (
+                  <div className="mb-4 relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      value={facultySearch}
+                      onChange={(e) => setFacultySearch(e.target.value)}
+                      placeholder="Search faculty by name..."
+                      className="pl-10"
+                    />
+                  </div>
+
+                  {filteredFaculty.length > 0 ? (
                     <div className="space-y-2">
-                      {availableFaculty.map(faculty => (
+                      {filteredFaculty.map(faculty => (
                         <div
                           key={faculty.id}
                           onClick={() => handleSelectFaculty(faculty.id)}
@@ -260,7 +274,7 @@ export default function FacultyClassManagement() {
                     </div>
                   ) : (
                     <div className="text-center py-8">
-                      <p className="text-muted-foreground">No faculty available</p>
+                      <p className="text-muted-foreground">No faculty found</p>
                     </div>
                   )}
                 </CardContent>

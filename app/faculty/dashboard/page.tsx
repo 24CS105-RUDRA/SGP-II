@@ -12,7 +12,6 @@ import {
   Bell,
   DollarSign,
   FileText,
-  Calendar,
   BookOpen,
   Users,
   Clock,
@@ -95,13 +94,6 @@ export default function FacultyDashboard() {
       link: '/faculty/study-materials',
       color: 'text-cyan-600 dark:text-cyan-400',
       bgColor: 'bg-cyan-50 dark:bg-cyan-950/30'
-    },
-    {
-      title: 'Manage Timetable',
-      icon: <Calendar className="w-12 h-12" />,
-      link: '/faculty/timetable',
-      color: 'text-pink-600 dark:text-pink-400',
-      bgColor: 'bg-pink-50 dark:bg-pink-950/30'
     },
     {
       title: 'Update Syllabus',

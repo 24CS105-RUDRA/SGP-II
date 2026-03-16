@@ -29,7 +29,6 @@ export function AdminSidebar({ activeSection }: AdminSidebarProps) {
     { id: 'dashboard', label: 'Dashboard', icon: Home },
     { id: 'student-profiles', label: 'Student Profiles', icon: GraduationCap },
     { id: 'faculty-profiles', label: 'Faculty Profiles', icon: Users },
-    { id: 'student-lists', label: 'Student Lists', icon: Users },
     { id: 'faculty-class-management', label: 'Faculty Class Management', icon: Users },
     { id: 'notices', label: 'General Notices', icon: Bell },
     { id: 'fees', label: 'Fees Management', icon: DollarSign },

@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge'
 import { Plus, Upload, Trash2, FileText, Folder, ChevronRight, FolderPlus } from 'lucide-react'
 import { createStudyMaterial, getStudyMaterialsByFaculty, deleteStudyMaterial } from '@/lib/actions/study-materials'
 import { createFolder, getFoldersByFaculty, deleteFolder } from '@/lib/actions/study-material-folders'
+import { getFacultyByUserId } from '@/lib/actions/faculty'
 
 interface Faculty {
   id: string
@@ -77,16 +78,22 @@ export default function StudyMaterialsPage() {
     standard: '',
   })
 
-  const fetchFacultyData = async (facultyId: string) => {
-    try {
-      const response = await fetch(`/api/faculty/${facultyId}`, { method: 'GET' })
-      if (response.ok) {
-        const data = await response.json()
-        setFaculty(data)
+  const fetchFacultyProfileWithRetry = async (userId: string, retries = 1) => {
+    let lastResult: Awaited<ReturnType<typeof getFacultyByUserId>> | null = null
+
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      const result = await getFacultyByUserId(userId)
+      lastResult = result
+
+      const isFetchFailure = typeof result.error === 'string' && result.error.toLowerCase().includes('fetch failed')
+      if (!isFetchFailure || attempt === retries) {
+        return result
       }
-    } catch (error) {
-      console.error('[v0] Error fetching faculty data:', error)
+
+      await new Promise((resolve) => setTimeout(resolve, 300))
     }
+
+    return lastResult || { success: false, error: 'Failed to fetch faculty profile' }
   }
 
   const fetchFoldersAndMaterials = async (facultyId: string, standard: string) => {
@@ -119,12 +126,15 @@ export default function StudyMaterialsPage() {
 
     const fetchData = async () => {
       try {
-        // Fetch faculty info from session or API
-        const response = await fetch(`/api/faculty/${userData.id}`)
-        if (response.ok) {
-          const facultyData = await response.json()
+        const result = await fetchFacultyProfileWithRetry(userData.id)
+        if (result.success && result.data) {
+          const facultyData = result.data
           setFaculty(facultyData)
-          await fetchFoldersAndMaterials(facultyData.id, facultyData.standard || '10')
+          const assignedStandard = facultyData.assigned_standard || '10'
+          setCurrentFolderStandard(assignedStandard)
+          await fetchFoldersAndMaterials(facultyData.id, assignedStandard)
+        } else {
+          console.error('[v0] Error fetching faculty profile:', result.error)
         }
       } catch (error) {
         console.error('[v0] Error:', error)
@@ -201,7 +211,8 @@ export default function StudyMaterialsPage() {
       })
 
       if (!uploadResponse.ok) {
-        throw new Error('File upload failed')
+        const errorData = await uploadResponse.json().catch(() => ({ error: 'File upload failed' }))
+        throw new Error(errorData.error || 'File upload failed')
       }
 
       const uploadedFile = await uploadResponse.json()
@@ -403,11 +414,11 @@ export default function StudyMaterialsPage() {
               <p className="text-muted-foreground">Upload and organize study materials for your students</p>
             </div>
             <div className="flex gap-2">
-              <Button onClick={() => setShowFolderForm(true)} variant="outline" className="gap-2">
+              <Button onClick={() => setShowFolderForm(true)} disabled={!faculty} variant="outline" className="gap-2">
                 <FolderPlus className="w-4 h-4" />
                 New Folder
               </Button>
-              <Button onClick={() => setShowForm(true)} className="gap-2">
+              <Button onClick={() => setShowForm(true)} disabled={!faculty} className="gap-2">
                 <Plus className="w-4 h-4" />
                 Upload Material
               </Button>

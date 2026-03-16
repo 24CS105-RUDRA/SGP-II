@@ -8,7 +8,6 @@ import { Card, CardContent } from '@/components/ui/card'
 import {
   GraduationCap,
   Users,
-  BookOpen,
   Bell,
   DollarSign,
   ImageIcon,
@@ -127,14 +126,6 @@ export default function AdminDashboard() {
       color: 'text-purple-600 dark:text-purple-400',
       bgColor: 'bg-purple-50 dark:bg-purple-950/30',
       description: 'View and manage faculty profiles'
-    },
-    {
-      title: 'Student Lists',
-      icon: <BookOpen className="w-12 h-12" />,
-      link: '/admin/student-lists',
-      color: 'text-green-600 dark:text-green-400',
-      bgColor: 'bg-green-50 dark:bg-green-950/30',
-      description: 'Add, modify, and organize student lists'
     },
     {
       title: 'General Notices',
