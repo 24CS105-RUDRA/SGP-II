@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
-import { FacultySidebar } from '@/components/FacultySidebar'
+import { FacultySidebar } from '@/components/layout/faculty-sidebar'
 import { Plus, Trash2, Upload, Eye, Search } from 'lucide-react'
 import Image from 'next/image'
 import {

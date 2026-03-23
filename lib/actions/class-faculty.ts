@@ -1,14 +1,8 @@
-import { createClient } from '@supabase/supabase-js'
+'use server'
 
-// Use anon key by default - RLS policies handle access control
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+import { createClient } from '@/lib/supabase'
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Supabase credentials are required')
-}
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey)
+const supabase = createClient()
 
 export interface ClassFacultyAssignment {
   id: string

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { StudentSidebar } from '@/components/StudentSidebar'
+import { StudentSidebar } from '@/components/layout/student-sidebar'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Download, FileText, Folder, ChevronRight, Eye } from 'lucide-react'

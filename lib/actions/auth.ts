@@ -1,20 +1,10 @@
 'use server'
 
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase'
 import bcrypt from 'bcryptjs'
+import { sanitizePhoneNumber, validatePhoneNumber, validatePassword } from '@/lib/validations'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY
-
-if (!supabaseUrl) {
-  throw new Error('supabaseUrl is required. Set NEXT_PUBLIC_SUPABASE_URL or SUPABASE_URL environment variable.')
-}
-
-if (!supabaseServiceKey) {
-  throw new Error('Supabase key is required. Set SUPABASE_SERVICE_ROLE_KEY or SUPABASE_ANON_KEY environment variable.')
-}
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
+const supabase = createClient()
 
 interface LoginCredentials {
   username: string
@@ -37,17 +27,91 @@ interface LoginResponse {
   error?: string
 }
 
+const MAX_LOGIN_ATTEMPTS = 5
+const FIRST_LOCKOUT_DURATION_MS = 1 * 60 * 1000
+const SUBSEQUENT_LOCKOUT_DURATION_MS = 5 * 60 * 1000
+const loginAttempts = new Map<string, { count: number; lockedUntil?: number; lockoutCount: number }>()
+
+function isAccountLocked(username: string): boolean {
+  const attempts = loginAttempts.get(username)
+  if (!attempts) return false
+  
+  if (attempts.lockedUntil && Date.now() < attempts.lockedUntil) {
+    return true
+  }
+  
+  if (attempts.lockedUntil && Date.now() >= attempts.lockedUntil) {
+    loginAttempts.delete(username)
+    return false
+  }
+  
+  return false
+}
+
+function recordFailedAttempt(username: string): void {
+  const attempts = loginAttempts.get(username) || { count: 0, lockoutCount: 0 }
+  attempts.count++
+
+  if (attempts.count >= MAX_LOGIN_ATTEMPTS) {
+    const lockoutDuration = attempts.lockoutCount === 0 
+      ? FIRST_LOCKOUT_DURATION_MS 
+      : SUBSEQUENT_LOCKOUT_DURATION_MS
+    attempts.lockedUntil = Date.now() + lockoutDuration
+    attempts.lockoutCount++
+  }
+
+  loginAttempts.set(username, attempts)
+}
+
+function clearFailedAttempts(username: string): void {
+  loginAttempts.delete(username)
+}
+
+function getRemainingAttempts(username: string): number {
+  const attempts = loginAttempts.get(username)
+  if (!attempts) return MAX_LOGIN_ATTEMPTS
+  return Math.max(0, MAX_LOGIN_ATTEMPTS - attempts.count)
+}
+
 export async function loginUser(credentials: LoginCredentials): Promise<LoginResponse> {
   try {
     const { username, password, role } = credentials
 
-    console.log('[v0] Auth: Querying user with username:', username, 'role:', role)
+    if (!username || !password) {
+      return {
+        success: false,
+        error: 'Username and password are required',
+      }
+    }
 
-    // Query user from database using maybeSingle to handle no rows case
+    const sanitizedUsername = role === 'admin' 
+      ? username.trim() 
+      : sanitizePhoneNumber(username)
+
+    if (role !== 'admin' && !validatePhoneNumber(sanitizedUsername, { required: true }).isValid) {
+      return {
+        success: false,
+        error: 'Please enter a valid 10-digit mobile number',
+      }
+    }
+
+    if (isAccountLocked(sanitizedUsername)) {
+      const attempts = loginAttempts.get(sanitizedUsername)
+      const remainingMinutes = attempts?.lockedUntil 
+        ? Math.ceil((attempts.lockedUntil - Date.now()) / 60000) 
+        : 15
+      return {
+        success: false,
+        error: `Account temporarily locked. Please try again in ${remainingMinutes} minutes.`,
+      }
+    }
+
+    console.log('[v0] Auth: Querying user with username:', sanitizedUsername, 'role:', role)
+
     const { data: user, error: userError } = await supabase
       .from('users')
       .select('*')
-      .eq('username', username)
+      .eq('username', sanitizedUsername)
       .eq('role', role)
       .maybeSingle()
 
@@ -62,27 +126,32 @@ export async function loginUser(credentials: LoginCredentials): Promise<LoginRes
     }
 
     if (!user) {
-      console.log('[v0] Auth: No user found with username:', username, 'and role:', role)
+      console.log('[v0] Auth: No user found with username:', sanitizedUsername, 'and role:', role)
+      recordFailedAttempt(sanitizedUsername)
+      const remaining = getRemainingAttempts(sanitizedUsername)
       return {
         success: false,
-        error: 'Invalid username or password',
+        error: `Invalid credentials. ${remaining} attempts remaining.`,
       }
     }
 
-    // Verify password
-    console.log('[v0] Auth: Verifying password for user:', username)
+    console.log('[v0] Auth: Verifying password for user:', sanitizedUsername)
     const passwordMatch = await bcrypt.compare(password, user.password_hash)
 
     console.log('[v0] Auth: Password match result:', passwordMatch)
 
     if (!passwordMatch) {
+      recordFailedAttempt(sanitizedUsername)
+      const remaining = getRemainingAttempts(sanitizedUsername)
       return {
         success: false,
-        error: 'Invalid username or password',
+        error: `Invalid credentials. ${remaining} attempts remaining.`,
       }
     }
 
-    console.log('[v0] Auth: Login successful for user:', username)
+    clearFailedAttempts(sanitizedUsername)
+
+    console.log('[v0] Auth: Login successful for user:', sanitizedUsername)
 
     return {
       success: true,
@@ -167,6 +236,15 @@ export async function changePassword(
   newPassword: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    if (!oldPassword || !newPassword) {
+      return { success: false, error: 'Current password and new password are required' }
+    }
+
+    const passwordValidation = validatePassword(newPassword)
+    if (!passwordValidation.isValid) {
+      return { success: false, error: passwordValidation.errors.join(', ') }
+    }
+
     const { data: user, error: userError } = await supabase
       .from('users')
       .select('password_hash')
@@ -182,7 +260,7 @@ export async function changePassword(
       return { success: false, error: 'Current password is incorrect' }
     }
 
-    const newPasswordHash = await bcrypt.hash(newPassword, 10)
+    const newPasswordHash = await bcrypt.hash(newPassword, 12)
 
     const { error: updateError } = await supabase
       .from('users')

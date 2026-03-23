@@ -4,7 +4,7 @@ import React from "react"
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { StudentSidebar } from '@/components/StudentSidebar'
+import { StudentSidebar } from '@/components/layout/student-sidebar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { 

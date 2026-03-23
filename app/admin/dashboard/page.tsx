@@ -3,7 +3,7 @@
 import React from "react"
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { AdminSidebar } from '@/components/AdminSidebar'
+import { AdminSidebar } from '@/components/layout/admin-sidebar'
 import { Card, CardContent } from '@/components/ui/card'
 import {
   GraduationCap,
@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { getAllStudents } from '@/lib/actions/students'
+import { getAllFaculty } from '@/lib/actions/faculty'
 import { getAllGalleryEvents } from '@/lib/actions/gallery-events'
 
 interface UserSession {
@@ -68,11 +69,16 @@ export default function AdminDashboard() {
   const fetchDashboardData = async () => {
     try {
       console.log('[v0] Fetching dashboard data')
-      
+
       // Fetch all students
       const studentsResult = await getAllStudents()
       const studentCount = studentsResult.success ? (studentsResult.data?.length || 0) : 0
       console.log('[v0] Total students:', studentCount)
+
+      // Fetch all faculty
+      const facultyResult = await getAllFaculty()
+      const facultyCount = facultyResult.success ? (facultyResult.data?.length || 0) : 0
+      console.log('[v0] Total faculty:', facultyCount)
 
       // Fetch all gallery events
       const eventsResult = await getAllGalleryEvents()
@@ -92,7 +98,7 @@ export default function AdminDashboard() {
 
       setStats({
         totalStudents: studentCount,
-        totalFaculty: 45, // Could be fetched from faculty table if available
+        totalFaculty: facultyCount,
         totalClasses: uniqueClasses.size || 15,
         totalGalleryEvents: eventCount,
       })

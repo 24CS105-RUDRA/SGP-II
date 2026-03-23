@@ -1,52 +1,20 @@
 'use server'
 
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase'
+import {
+sanitizePhoneNumber,
+sanitizeInput,
+validatePhoneNumber,
+validateEmail,
+validateName,
+validateEmployeeId,
+} from '@/lib/validations'
+import type { FacultyProfile, CreateFacultyData, ActionResult } from '@/types'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY
-
-if (!supabaseUrl) {
-  throw new Error('supabaseUrl is required. Set NEXT_PUBLIC_SUPABASE_URL or SUPABASE_URL environment variable.')
-}
-
-if (!supabaseServiceKey) {
-  throw new Error('Supabase key is required. Set SUPABASE_SERVICE_ROLE_KEY or SUPABASE_ANON_KEY environment variable.')
-}
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
+const supabase = createClient()
 
 async function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
-interface FacultyProfile {
-  id: string
-  user_id: string
-  employee_id: string
-  department: string
-  subject: string
-  faculty_name?: string
-  phone_number?: string
-  assigned_standard?: string
-  assigned_division?: string
-  user?: {
-    full_name: string
-    email: string
-    username: string
-  }
-}
-
-interface CreateFacultyData {
-  username: string
-  password: string
-  full_name: string
-  email: string
-  employee_id: string
-  department: string
-  subject: string
-  phone_number?: string
-  assigned_standard?: string
-  assigned_division?: string
+return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 export async function createFaculty(data: CreateFacultyData): Promise<{
@@ -57,38 +25,87 @@ export async function createFaculty(data: CreateFacultyData): Promise<{
   try {
     const { default: bcrypt } = await import('bcryptjs')
 
-    // Check if username already exists
+    const sanitizedPhone = sanitizePhoneNumber(data.phone_number || '')
+    
+    if (!sanitizedPhone) {
+      return { success: false, error: 'Phone number is required for faculty registration' }
+    }
+    
+    const phoneValidation = validatePhoneNumber(sanitizedPhone, { required: true })
+    if (!phoneValidation.isValid) {
+      return { success: false, error: phoneValidation.errors.join(', ') }
+    }
+    
+    const sanitizedEmail = sanitizeInput(data.email)
+    const emailValidation = validateEmail(sanitizedEmail, { required: true })
+    if (!emailValidation.isValid) {
+      return { success: false, error: emailValidation.errors.join(', ') }
+    }
+    
+    const sanitizedName = sanitizeInput(data.full_name)
+    const nameValidation = validateName(sanitizedName, 'Full name')
+    if (!nameValidation.isValid) {
+      return { success: false, error: nameValidation.errors.join(', ') }
+    }
+    
+    const sanitizedEmployeeId = sanitizeInput(data.employee_id)
+    const employeeValidation = validateEmployeeId(sanitizedEmployeeId)
+    if (!employeeValidation.isValid) {
+      return { success: false, error: employeeValidation.errors.join(', ') }
+    }
+    
+    if (!data.department) {
+      return { success: false, error: 'Department is required' }
+    }
+    
+    if (!data.subject) {
+      return { success: false, error: 'Subject is required' }
+    }
+    
+    if (data.password.length < 6) {
+      return { success: false, error: 'Password must be at least 6 characters' }
+    }
+    
+    const username = sanitizedPhone
     const { data: existingUser } = await supabase
       .from('users')
       .select('id')
-      .eq('username', data.username)
+      .eq('username', username)
       .maybeSingle()
 
     if (existingUser) {
-      return { success: false, error: `Username '${data.username}' already exists. Please use a different username.` }
+      return { success: false, error: `Phone number '${sanitizedPhone}' is already registered. Please use a different phone number.` }
     }
 
-    // Check if email already exists
     const { data: existingEmail } = await supabase
       .from('users')
       .select('id')
-      .eq('email', data.email)
+      .eq('email', sanitizedEmail)
       .maybeSingle()
 
     if (existingEmail) {
-      return { success: false, error: `Email '${data.email}' already exists. Please use a different email.` }
+      return { success: false, error: `Email '${sanitizedEmail}' already exists. Please use a different email.` }
+    }
+    
+    const { data: existingPhone } = await supabase
+      .from('faculty')
+      .select('id')
+      .eq('phone_number', sanitizedPhone)
+      .maybeSingle()
+
+    if (existingPhone) {
+      return { success: false, error: `Phone number '${sanitizedPhone}' is already registered.` }
     }
 
     const passwordHash = await bcrypt.hash(data.password, 10)
 
-    // Create user
     const { data: user, error: userError } = await supabase
       .from('users')
       .insert({
-        username: data.username,
+        username: username,
         password_hash: passwordHash,
-        full_name: data.full_name,
-        email: data.email,
+        full_name: sanitizedName,
+        email: sanitizedEmail,
         role: 'faculty',
       })
       .select()
@@ -99,16 +116,15 @@ export async function createFaculty(data: CreateFacultyData): Promise<{
       return { success: false, error: userError.message }
     }
 
-    // Create faculty profile
     const { data: faculty, error: facultyError } = await supabase
       .from('faculty')
       .insert({
         user_id: user.id,
-        employee_id: data.employee_id,
+        employee_id: sanitizedEmployeeId,
         department: data.department,
         subject: data.subject,
-        faculty_name: data.full_name,
-        phone_number: data.phone_number,
+        faculty_name: sanitizedName,
+        phone_number: sanitizedPhone,
         assigned_standard: data.assigned_standard || null,
         assigned_division: data.assigned_division || null,
       })
@@ -120,17 +136,10 @@ export async function createFaculty(data: CreateFacultyData): Promise<{
       return { success: false, error: facultyError.message }
     }
 
-    return {
-      success: true,
-      data: {
-        ...faculty,
-        user: {
-          full_name: user.full_name,
-          email: user.email,
-          username: user.username,
-        },
-      },
-    }
+return {
+success: true,
+data: faculty as FacultyProfile,
+}
   } catch (error) {
     console.log('[v0] Create faculty exception:', error)
     return { success: false, error: 'Failed to create faculty' }
@@ -155,44 +164,44 @@ export async function getFacultyProfile(facultyId: string): Promise<{
         )
       `
       )
-      .eq('id', facultyId)
-      .single()
+.eq('id', facultyId)
+.single()
 
-    if (error) {
-      return { success: false, error: error.message }
-    }
+if (error) {
+return { success: false, error: error.message }
+}
 
-    return { success: true, data: faculty }
-  } catch (error) {
-    return { success: false, error: 'Failed to fetch faculty profile' }
-  }
+return { success: true, data: faculty as FacultyProfile }
+} catch (error) {
+return { success: false, error: 'Failed to fetch faculty profile' }
+}
 }
 
 export async function getAllFaculty(): Promise<{
-  success: boolean
-  data?: FacultyProfile[]
-  error?: string
+success: boolean
+data?: FacultyProfile[]
+error?: string
 }> {
-  try {
-    const { data: faculty, error } = await supabase
-      .from('faculty')
-      .select(
-        `
-        *,
-        user:user_id (
-          full_name,
-          email,
-          username
-        )
-      `
-      )
-      .order('created_at')
+try {
+const { data: faculty, error } = await supabase
+.from('faculty')
+.select(
+`
+*,
+user:user_id (
+full_name,
+email,
+username
+)
+`
+)
+.order('created_at')
 
-    if (error) {
-      return { success: false, error: error.message }
-    }
+if (error) {
+return { success: false, error: error.message }
+}
 
-    return { success: true, data: faculty }
+return { success: true, data: faculty as FacultyProfile[] }
   } catch (error) {
     return { success: false, error: 'Failed to fetch faculty' }
   }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { FacultySidebar } from '@/components/FacultySidebar'
+import { FacultySidebar } from '@/components/layout/faculty-sidebar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -47,6 +47,9 @@ export default function AttendancePage() {
 
   const standards = ['9', '10', '11', '12']
   const divisions = ['A', 'B', 'C', 'D']
+
+  const today = new Date().toISOString().split('T')[0]
+  const isFutureDate = selectedDate > today
 
   const fetchFacultyProfileWithRetry = async (userId: string, retries = 1) => {
     let lastResult: Awaited<ReturnType<typeof getFacultyByUserId>> | null = null
@@ -156,6 +159,11 @@ export default function AttendancePage() {
       return
     }
 
+    if (isFutureDate) {
+      alert('Cannot mark attendance for future dates')
+      return
+    }
+
     setSubmitting(true)
 
     try {
@@ -205,18 +213,22 @@ export default function AttendancePage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid md:grid-cols-3 gap-6">
-                <div>
-                  <label className="block text-sm font-semibold text-foreground mb-2">Date</label>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-5 h-5 text-primary" />
-                    <input
-                      type="date"
-                      value={selectedDate}
-                      onChange={(e) => setSelectedDate(e.target.value)}
-                      className="flex-1 p-2 rounded-lg border border-border bg-background text-foreground"
-                    />
-                  </div>
-                </div>
+            <div>
+              <label className="block text-sm font-semibold text-foreground mb-2">Date</label>
+              <div className="flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-primary" />
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  max={today}
+                  className="flex-1 p-2 rounded-lg border border-border bg-background text-foreground"
+                />
+              </div>
+              {isFutureDate && (
+                <p className="text-sm text-red-500 mt-1">Cannot mark attendance for future dates</p>
+              )}
+            </div>
                 {assignedStandard && assignedDivision ? (
                   <>
                     <div>
@@ -306,14 +318,14 @@ export default function AttendancePage() {
 
           {/* Save Button */}
           <div className="mt-8 flex gap-3">
-            <Button
-              onClick={handleSave}
-              disabled={submitting || students.length === 0}
-              className="bg-accent hover:bg-accent/90 text-accent-foreground flex items-center gap-2"
-            >
-              <Save className="w-4 h-4" />
-              {submitting ? 'Saving...' : 'Save Attendance'}
-            </Button>
+        <Button
+          onClick={handleSave}
+          disabled={submitting || students.length === 0 || isFutureDate}
+          className="bg-accent hover:bg-accent/90 text-accent-foreground flex items-center gap-2"
+        >
+          <Save className="w-4 h-4" />
+          {submitting ? 'Saving...' : 'Save Attendance'}
+        </Button>
             <Button variant="outline">Cancel</Button>
           </div>
         </div>

@@ -1,13 +1,11 @@
-import { put } from '@vercel/blob'
 import { NextRequest, NextResponse } from 'next/server'
-import { mkdir, writeFile } from 'node:fs/promises'
-import path from 'node:path'
+import { uploadImage } from '@/lib/cloudinary'
 
 export const runtime = 'nodejs'
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('[v0] Upload API: Starting image upload')
+    console.log('[v0] Upload API: Starting image upload to Cloudinary')
     const formData = await request.formData()
     const file = formData.get('file') as File
 
@@ -21,31 +19,22 @@ export async function POST(request: NextRequest) {
 
     console.log('[v0] Upload API: File received:', file.name, 'Size:', file.size, 'Type:', file.type)
 
-    const buffer = await file.arrayBuffer()
-    const timestamp = Date.now()
-    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
-    const filename = `gallery/${timestamp}-${safeName}`
+    const result = await uploadImage(file, 'school/gallery')
 
-    if (!process.env.BLOB_READ_WRITE_TOKEN) {
-      const relativePath = path.join('uploads', 'gallery', `${timestamp}-${safeName}`)
-      const absolutePath = path.join(process.cwd(), 'public', relativePath)
-      await mkdir(path.dirname(absolutePath), { recursive: true })
-      await writeFile(absolutePath, Buffer.from(buffer))
-
-      const localUrl = `/${relativePath.replace(/\\/g, '/')}`
-      console.log('[v0] Upload API: Stored locally at:', localUrl)
-      return NextResponse.json({ url: localUrl, storage: 'local' })
+    if (!result.success) {
+      console.error('[v0] Upload API: Upload failed:', result.error)
+      return NextResponse.json(
+        { error: result.error || 'Failed to upload image' },
+        { status: 500 }
+      )
     }
 
-    console.log('[v0] Upload API: Uploading to Blob storage as:', filename)
-
-    const blob = await put(filename, buffer, {
-      access: 'public',
-      contentType: file.type,
+    console.log('[v0] Upload API: Upload successful, URL:', result.url)
+    return NextResponse.json({ 
+      url: result.url, 
+      publicId: result.publicId,
+      storage: 'cloudinary' 
     })
-
-    console.log('[v0] Upload API: Upload successful, URL:', blob.url)
-    return NextResponse.json({ url: blob.url, storage: 'blob' })
   } catch (error) {
     console.error('[v0] Upload error details:', error)
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'

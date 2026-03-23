@@ -2,30 +2,21 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { AdminSidebar } from '@/components/AdminSidebar'
+import { AdminSidebar } from '@/components/layout/admin-sidebar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
 import { Search, Edit2, Trash2, Plus } from 'lucide-react'
 import { getAllFaculty, createFaculty, updateFaculty, deleteFaculty } from '@/lib/actions/faculty'
+import { validatePhoneNumber, validateEmail, validateName } from '@/lib/validations'
+import type { FacultyProfile } from '@/types'
 
-interface FacultyProfile {
-  id: string
-  user_id: string
-  employee_id: string
-  department: string
-  subject: string
-  faculty_name?: string
-  assigned_standard?: string
-  assigned_division?: string
-  phone_number?: string
-  user?: {
-    full_name: string
-    email: string
-    username: string
-  }
+interface FormErrors {
+phone_number?: string
+full_name?: string
+email?: string
+password?: string
 }
 
 export default function FacultyProfilesPage() {
@@ -37,6 +28,7 @@ export default function FacultyProfilesPage() {
   const [showForm, setShowForm] = useState(false)
   const [editingFacultyId, setEditingFacultyId] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [formErrors, setFormErrors] = useState<FormErrors>({})
   const [formData, setFormData] = useState({
     username: '',
     password: '',
@@ -53,7 +45,6 @@ export default function FacultyProfilesPage() {
   const fetchFaculty = async () => {
     const result = await getAllFaculty()
     if (result.success) {
-      console.log('[v0] Faculty fetched:', result.data)
       setFaculty(result.data || [])
     } else {
       console.error('[v0] Error fetching faculty:', result.error)
@@ -77,7 +68,35 @@ export default function FacultyProfilesPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!formData.username || !formData.password || !formData.full_name || !formData.email) {
+    const errors: FormErrors = {}
+
+    if (!editingFacultyId) {
+      const phoneResult = validatePhoneNumber(formData.phone_number, { required: true })
+      if (!phoneResult.isValid) {
+        errors.phone_number = phoneResult.errors.join(', ')
+      }
+
+      const emailResult = validateEmail(formData.email, { required: true })
+      if (!emailResult.isValid) {
+        errors.email = emailResult.errors.join(', ')
+      }
+
+      const nameResult = validateName(formData.full_name, 'Full name')
+      if (!nameResult.isValid) {
+        errors.full_name = nameResult.errors.join(', ')
+      }
+
+      if (formData.password && formData.password.length < 6) {
+        errors.password = 'Password must be at least 6 characters'
+      }
+    }
+
+    setFormErrors(errors)
+    if (Object.keys(errors).length > 0) {
+      return
+    }
+
+    if (!formData.phone_number || !formData.password || !formData.full_name || !formData.email) {
       alert('Please fill in all required fields')
       return
     }
@@ -85,10 +104,13 @@ export default function FacultyProfilesPage() {
     setSubmitting(true)
 
     try {
-      const result = await createFaculty(formData)
+      const submitData = {
+        ...formData,
+        username: formData.phone_number.replace(/\D/g, ''),
+      }
+      const result = await createFaculty(submitData)
 
       if (result.success) {
-        console.log('[v0] Faculty created:', result.data)
         setFormData({
           username: '',
           password: '',
@@ -101,12 +123,12 @@ export default function FacultyProfilesPage() {
           assigned_standard: '',
           assigned_division: '',
         })
+        setFormErrors({})
         setShowForm(false)
         await fetchFaculty()
-        alert('Faculty added successfully! Credentials: ' + formData.username + ' / ' + formData.password)
+        alert(`Faculty added successfully!\n\nLogin credentials:\nUsername (Phone): ${submitData.username}\nPassword: ${submitData.password}`)
       } else {
         alert(`Error: ${result.error}`)
-        console.error('[v0] Create faculty error:', result.error)
       }
     } catch (error) {
       console.error('[v0] Submit error:', error)
@@ -122,7 +144,6 @@ export default function FacultyProfilesPage() {
     try {
       const result = await deleteFaculty(facultyId)
       if (result.success) {
-        console.log('[v0] Faculty deleted')
         await fetchFaculty()
       } else {
         alert(`Error: ${result.error}`)
@@ -145,6 +166,7 @@ export default function FacultyProfilesPage() {
       assigned_standard: '',
       assigned_division: '',
     })
+    setFormErrors({})
   }
 
   const handleEditFaculty = (member: FacultyProfile) => {
@@ -228,7 +250,6 @@ export default function FacultyProfilesPage() {
             </Button>
           </div>
 
-          {/* Add Faculty Form */}
           {showForm && (
             <Card className="mb-8 border-2 border-accent">
               <CardHeader>
@@ -239,22 +260,44 @@ export default function FacultyProfilesPage() {
                   {!editingFacultyId && (
                     <>
                       <div>
-                        <Label>Username *</Label>
-                        <Input value={formData.username} onChange={(e) => setFormData({...formData, username: e.target.value})} required />
+                        <Label>Phone Number (Username) *</Label>
+                        <Input
+                          value={formData.phone_number}
+                          onChange={(e) => setFormData({...formData, phone_number: e.target.value})}
+                          placeholder="10-digit mobile number"
+                          required
+                        />
+                        {formErrors.phone_number && (
+                          <p className="text-red-500 text-sm mt-1">{formErrors.phone_number}</p>
+                        )}
                       </div>
                       <div>
-                        <Label>Password *</Label>
-                        <Input type="password" value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} required />
+                        <Label>Password * (min 6 characters)</Label>
+                        <Input
+                          type="password"
+                          value={formData.password}
+                          onChange={(e) => setFormData({...formData, password: e.target.value})}
+                          required
+                        />
+                        {formErrors.password && (
+                          <p className="text-red-500 text-sm mt-1">{formErrors.password}</p>
+                        )}
                       </div>
                     </>
                   )}
                   <div>
                     <Label>Full Name *</Label>
                     <Input value={formData.full_name} onChange={(e) => setFormData({...formData, full_name: e.target.value})} required />
+                    {formErrors.full_name && (
+                      <p className="text-red-500 text-sm mt-1">{formErrors.full_name}</p>
+                    )}
                   </div>
                   <div>
                     <Label>Email *</Label>
                     <Input type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} required />
+                    {formErrors.email && (
+                      <p className="text-red-500 text-sm mt-1">{formErrors.email}</p>
+                    )}
                   </div>
                   <div>
                     <Label>Employee ID</Label>
@@ -270,10 +313,12 @@ export default function FacultyProfilesPage() {
                     <Label>Subject</Label>
                     <Input value={formData.subject} onChange={(e) => setFormData({...formData, subject: e.target.value})} />
                   </div>
-                  <div>
-                    <Label>Phone Number</Label>
-                    <Input value={formData.phone_number} onChange={(e) => setFormData({...formData, phone_number: e.target.value})} />
-                  </div>
+                  {editingFacultyId && (
+                    <div>
+                      <Label>Phone Number</Label>
+                      <Input value={formData.phone_number} onChange={(e) => setFormData({...formData, phone_number: e.target.value})} />
+                    </div>
+                  )}
                   <div>
                     <Label>Assign Class</Label>
                     <select className="w-full border border-border rounded px-3 py-2 bg-background text-foreground" value={formData.assigned_standard} onChange={(e) => setFormData({...formData, assigned_standard: e.target.value, assigned_division: ''})}>
@@ -329,7 +374,6 @@ export default function FacultyProfilesPage() {
             </Card>
           )}
 
-          {/* Search */}
           <Card className="mb-6">
             <CardContent className="p-4">
               <div className="relative">
@@ -344,7 +388,6 @@ export default function FacultyProfilesPage() {
             </CardContent>
           </Card>
 
-          {/* Faculty Table */}
           <Card>
             <CardHeader>
               <CardTitle>All Faculty ({filteredFaculty.length})</CardTitle>
@@ -355,6 +398,7 @@ export default function FacultyProfilesPage() {
                   <thead>
                     <tr className="border-b border-border">
                       <th className="text-left py-3 px-4 font-semibold">Name</th>
+                      <th className="text-left py-3 px-4 font-semibold">Phone (Username)</th>
                       <th className="text-left py-3 px-4 font-semibold">Employee ID</th>
                       <th className="text-left py-3 px-4 font-semibold">Department</th>
                       <th className="text-left py-3 px-4 font-semibold">Subject</th>
@@ -367,6 +411,7 @@ export default function FacultyProfilesPage() {
                     {filteredFaculty.map((member) => (
                       <tr key={member.id} className="border-b border-border hover:bg-accent/10">
                         <td className="py-3 px-4">{member.faculty_name || member.user?.full_name || 'N/A'}</td>
+                        <td className="py-3 px-4 text-sm font-mono">{member.phone_number || member.user?.username || 'N/A'}</td>
                         <td className="py-3 px-4">{member.employee_id || 'N/A'}</td>
                         <td className="py-3 px-4">{member.department}</td>
                         <td className="py-3 px-4">{member.subject || 'N/A'}</td>

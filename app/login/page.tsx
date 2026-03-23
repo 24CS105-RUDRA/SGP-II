@@ -156,21 +156,26 @@ export default function LoginPage() {
                 </div>
               )}
 
-              {/* Username */}
-              <div className="space-y-2">
-                <Label htmlFor="username" className="text-foreground font-semibold">
-                  Username
-                </Label>
-                <Input
-                  id="username"
-                  type="text"
-                  placeholder="Enter your username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="bg-background border-border"
-                  disabled={loading}
-                />
-              </div>
+{/* Username */}
+            <div className="space-y-2">
+              <Label htmlFor="username" className="text-foreground font-semibold">
+                {role === 'admin' ? 'Username' : 'Mobile Number'}
+              </Label>
+              <Input
+                id="username"
+                type={role === 'admin' ? 'text' : 'tel'}
+                placeholder={role === 'admin' ? 'Enter your username' : 'Enter 10-digit mobile number'}
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="bg-background border-border"
+                disabled={loading}
+              />
+              {role !== 'admin' && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Use your registered mobile number as username
+                </p>
+              )}
+            </div>
 
               {/* Password */}
               <div className="space-y-2">

@@ -2,26 +2,28 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { StudentSidebar } from '@/components/StudentSidebar'
+import { StudentSidebar } from '@/components/layout/student-sidebar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { Mail, Phone, MapPin, Calendar, Award } from 'lucide-react'
+import { Phone, Lock } from 'lucide-react'
 import { changePassword } from '@/lib/actions/auth'
+import { getStudentByUserId } from '@/lib/actions/students'
+import type { StudentProfile } from '@/types'
 
 interface UserSession {
   id: string
   username: string
   name: string
   role: string
-  year: string
 }
 
-export default function StudentProfile() {
+export default function StudentProfilePage() {
   const router = useRouter()
   const [user, setUser] = useState<UserSession | null>(null)
+  const [student, setStudent] = useState<StudentProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
@@ -29,6 +31,17 @@ export default function StudentProfile() {
     confirmPassword: '',
   })
   const [passwordSubmitting, setPasswordSubmitting] = useState(false)
+
+  const fetchStudentProfile = async (userId: string) => {
+    try {
+      const result = await getStudentByUserId(userId)
+      if (result.success && result.data) {
+        setStudent(result.data)
+      }
+    } catch (error) {
+      console.error('Error fetching student profile:', error)
+    }
+  }
 
   useEffect(() => {
     const session = localStorage.getItem('userSession')
@@ -39,15 +52,16 @@ export default function StudentProfile() {
       return
     }
 
-    setUser(JSON.parse(session))
+    const userData = JSON.parse(session)
+    setUser(userData)
+    fetchStudentProfile(userData.id)
     setLoading(false)
   }, [router])
 
-  if (loading) return <div>Loading...</div>
-  if (!user) return null
-
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (!user) return
 
     if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
       alert('Please fill in all password fields')
@@ -75,6 +89,11 @@ export default function StudentProfile() {
     }
   }
 
+  if (loading) return <div className="flex items-center justify-center min-h-screen">Loading...</div>
+  if (!user) return null
+
+  const studentUser = student?.user as { full_name?: string; email?: string; username?: string } | undefined
+
   return (
     <div className="flex min-h-screen bg-background">
       <StudentSidebar activeSection="profile" />
@@ -83,7 +102,7 @@ export default function StudentProfile() {
         <div className="p-4 md:p-8">
           <h1 className="text-3xl font-bold text-primary mb-8">Student Profile</h1>
 
-          {/* Basic Information */}
+          {/* Personal Information */}
           <Card className="mb-6">
             <CardHeader>
               <CardTitle>Personal Information</CardTitle>
@@ -92,27 +111,23 @@ export default function StudentProfile() {
               <div className="grid md:grid-cols-2 gap-6">
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Full Name</p>
-                  <p className="text-lg font-semibold text-foreground">{user.name}</p>
+                  <p className="text-lg font-semibold text-foreground">{student?.student_name || studentUser?.full_name || user.name || 'N/A'}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Roll Number</p>
-                  <p className="text-lg font-semibold text-foreground">AVS-{user.year}-{user.username.padStart(4, '0')}</p>
+                  <p className="text-lg font-semibold text-foreground">{student?.roll_number || 'N/A'}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground mb-1">Current Year</p>
-                  <Badge className="text-base">{user.year} Year</Badge>
+                  <p className="text-sm text-muted-foreground mb-1">Class</p>
+                  <Badge className="text-base">{student?.standard ? `Class ${student.standard}` : 'N/A'}</Badge>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground mb-1">Section</p>
-                  <p className="text-lg font-semibold text-foreground">A</p>
+                  <p className="text-sm text-muted-foreground mb-1">Division</p>
+                  <p className="text-lg font-semibold text-foreground">{student?.division || 'N/A'}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Date of Birth</p>
-                  <p className="text-lg font-semibold text-foreground">15 / 05 / 2006</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">Gender</p>
-                  <p className="text-lg font-semibold text-foreground">Male</p>
+                  <p className="text-lg font-semibold text-foreground">{student?.date_of_birth || 'N/A'}</p>
                 </div>
               </div>
             </CardContent>
@@ -128,81 +143,24 @@ export default function StudentProfile() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center gap-4">
-                <Mail className="w-5 h-5 text-primary" />
+                <Phone className="w-5 h-5 text-primary" />
                 <div>
-                  <p className="text-sm text-muted-foreground">Email</p>
-                  <p className="font-semibold">{user.username}@student.archnavidhya.edu.in</p>
+                  <p className="text-sm text-muted-foreground">Mobile Number</p>
+                  <p className="font-semibold">{student?.phone_number ? `+91 ${student.phone_number}` : 'N/A'}</p>
                 </div>
               </div>
               <div className="flex items-center gap-4">
                 <Phone className="w-5 h-5 text-primary" />
                 <div>
-                  <p className="text-sm text-muted-foreground">Mobile Number</p>
-                  <p className="font-semibold">+91 {user.username}</p>
+                  <p className="text-sm text-muted-foreground">Father's Mobile</p>
+                  <p className="font-semibold">{student?.father_mobile ? `+91 ${student.father_mobile}` : 'N/A'}</p>
                 </div>
               </div>
               <div className="flex items-center gap-4">
-                <MapPin className="w-5 h-5 text-primary" />
+                <Phone className="w-5 h-5 text-primary" />
                 <div>
-                  <p className="text-sm text-muted-foreground">Address</p>
-                  <p className="font-semibold">123 Student Lane, City, State 12345</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Academic Information */}
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Award className="w-5 h-5" />
-                Academic Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid md:grid-cols-2 gap-6">
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">Admission Year</p>
-                  <p className="text-lg font-semibold">2022</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">Grade / Stream</p>
-                  <p className="text-lg font-semibold">Senior Secondary (Science)</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">Classroom Teacher</p>
-                  <p className="text-lg font-semibold">Mrs. Sneha Verma</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">Overall Score</p>
-                  <p className="text-lg font-semibold">87.5%</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Parent / Guardian Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Parent / Guardian Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid md:grid-cols-2 gap-6">
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">Guardian Name</p>
-                  <p className="text-lg font-semibold">Mr. Rajesh Kumar</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">Relation</p>
-                  <p className="text-lg font-semibold">Father</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">Contact Number</p>
-                  <p className="text-lg font-semibold">+91 9876543210</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">Email</p>
-                  <p className="text-lg font-semibold">rajesh@email.com</p>
+                  <p className="text-sm text-muted-foreground">Mother's Mobile</p>
+                  <p className="font-semibold">{student?.mother_mobile ? `+91 ${student.mother_mobile}` : 'N/A'}</p>
                 </div>
               </div>
             </CardContent>
@@ -211,7 +169,10 @@ export default function StudentProfile() {
           {/* Password Reset */}
           <Card className="mt-6">
             <CardHeader>
-              <CardTitle>Change Password</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Lock className="w-5 h-5" />
+                Change Password
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <form onSubmit={handlePasswordChange} className="space-y-4 max-w-xl">

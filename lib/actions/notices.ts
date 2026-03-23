@@ -1,38 +1,16 @@
 'use server'
 
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase'
+import type { Notice } from '@/types'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY
-
-if (!supabaseUrl) {
-  throw new Error('supabaseUrl is required. Set NEXT_PUBLIC_SUPABASE_URL or SUPABASE_URL environment variable.')
-}
-
-if (!supabaseServiceKey) {
-  throw new Error('Supabase key is required. Set SUPABASE_SERVICE_ROLE_KEY or SUPABASE_ANON_KEY environment variable.')
-}
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
-
-interface Notice {
-  id: string
-  created_by: string
-  title: string
-  content: string
-  notice_type: 'general' | 'academic' | 'event' | 'emergency'
-  priority: 'low' | 'normal' | 'high'
-  is_published: boolean
-  published_date: string
-  created_at: string
-}
+const supabase = createClient()
 
 interface CreateNoticeData {
   created_by: string
   title: string
   content: string
-  notice_type?: 'general' | 'academic' | 'event' | 'emergency'
-  priority?: 'low' | 'normal' | 'high'
+  notice_type?: 'general' | 'academic' | 'event' | 'urgent'
+  priority?: 'low' | 'medium' | 'high'
 }
 
 export async function createNotice(data: CreateNoticeData): Promise<{
@@ -41,23 +19,29 @@ export async function createNotice(data: CreateNoticeData): Promise<{
   error?: string
 }> {
   try {
+    const now = new Date().toISOString()
     const { data: notice, error } = await supabase
       .from('notices')
       .insert({
-        ...data,
+        created_by: data.created_by,
+        title: data.title,
+        content: data.content,
         notice_type: data.notice_type || 'general',
-        priority: data.priority || 'normal',
+        priority: data.priority || 'medium',
         is_published: true,
+        published_date: now,
       })
       .select()
       .single()
 
     if (error) {
+      console.error('[v0] Create notice error:', error)
       return { success: false, error: error.message }
     }
 
-    return { success: true, data: notice }
+    return { success: true, data: notice as Notice }
   } catch (error) {
+    console.error('[v0] Create notice exception:', error)
     return { success: false, error: 'Failed to create notice' }
   }
 }
@@ -78,7 +62,7 @@ export async function getPublishedNotices(): Promise<{
       return { success: false, error: error.message }
     }
 
-    return { success: true, data: notices }
+    return { success: true, data: notices as Notice[] }
   } catch (error) {
     return { success: false, error: 'Failed to fetch notices' }
   }
@@ -101,7 +85,7 @@ export async function getNoticesByType(noticeType: string): Promise<{
       return { success: false, error: error.message }
     }
 
-    return { success: true, data: notices }
+    return { success: true, data: notices as Notice[] }
   } catch (error) {
     return { success: false, error: 'Failed to fetch notices' }
   }
@@ -113,7 +97,6 @@ export async function getAllNotices(userId: string): Promise<{
   error?: string
 }> {
   try {
-    // Check if user is admin or faculty
     const { data: user, error: userError } = await supabase
       .from('users')
       .select('role')
@@ -133,7 +116,7 @@ export async function getAllNotices(userId: string): Promise<{
       return { success: false, error: error.message }
     }
 
-    return { success: true, data: notices }
+    return { success: true, data: notices as Notice[] }
   } catch (error) {
     return { success: false, error: 'Failed to fetch notices' }
   }
@@ -149,7 +132,10 @@ export async function updateNotice(
   try {
     const { error } = await supabase
       .from('notices')
-      .update(updates)
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString(),
+      })
       .eq('id', noticeId)
 
     if (error) {
@@ -167,10 +153,7 @@ export async function deleteNotice(noticeId: string): Promise<{
   error?: string
 }> {
   try {
-    const { error } = await supabase
-      .from('notices')
-      .delete()
-      .eq('id', noticeId)
+    const { error } = await supabase.from('notices').delete().eq('id', noticeId)
 
     if (error) {
       return { success: false, error: error.message }

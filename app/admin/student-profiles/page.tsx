@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { AdminSidebar } from '@/components/AdminSidebar'
+import { AdminSidebar } from '@/components/layout/admin-sidebar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -12,22 +12,15 @@ import { Search, Edit, Trash2, Plus } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import { getAllStudents, createStudent, deleteStudent, updateStudent } from '@/lib/actions/students'
 import Loading from './loading'
+import { validatePhoneNumber, validateName, validatePassword } from '@/lib/validations'
+import type { StudentProfile } from '@/types'
 
-interface StudentProfile {
-  id: string
-  user_id: string
-  roll_number: string
-  standard: string
-  division: string
-  student_name?: string
+interface FormErrors {
   phone_number?: string
-  parent_contact?: string
-  date_of_birth?: string
-  user?: {
-    full_name: string
-    email: string
-    username: string
-  }
+  full_name?: string
+  password?: string
+  father_mobile?: string
+  mother_mobile?: string
 }
 
 export default function StudentProfilesPage() {
@@ -41,16 +34,18 @@ export default function StudentProfilesPage() {
   const [selectedClass, setSelectedClass] = useState<string | null>(null)
   const [selectedDivision, setSelectedDivision] = useState<string | null>(null)
   const [editingStudentId, setEditingStudentId] = useState<string | null>(null)
+  const [expandedDivisions, setExpandedDivisions] = useState<Set<string>>(new Set())
+  const [formErrors, setFormErrors] = useState<FormErrors>({})
   const [formData, setFormData] = useState({
     username: '',
     password: '',
     full_name: '',
-    email: '',
     roll_number: '',
     standard: '',
     division: '',
     phone_number: '',
-    parent_contact: '',
+    father_mobile: '',
+    mother_mobile: '',
     date_of_birth: '',
   })
 
@@ -81,44 +76,87 @@ export default function StudentProfilesPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!formData.username || !formData.password || !formData.full_name || !formData.email) {
-      alert('Please fill in all required fields')
-      return
+    const errors: FormErrors = {}
+    
+  if (!editingStudentId) {
+    const phoneResult = validatePhoneNumber(formData.phone_number, { required: true })
+    if (!phoneResult.isValid) {
+      errors.phone_number = phoneResult.errors.join(', ')
     }
 
-    setSubmitting(true)
+    const nameResult = validateName(formData.full_name, 'Full name')
+    if (!nameResult.isValid) {
+      errors.full_name = nameResult.errors.join(', ')
+    }
 
-    try {
-      const result = await createStudent(formData)
+    const passwordResult = validatePassword(formData.password)
+    if (!passwordResult.isValid) {
+      errors.password = passwordResult.errors.join(', ')
+    }
 
-      if (result.success) {
-        console.log('[v0] Student created:', result.data)
-        setFormData({
-          username: '',
-          password: '',
-          full_name: '',
-          email: '',
-          roll_number: '',
-          standard: '',
-          division: '',
-          phone_number: '',
-          parent_contact: '',
-          date_of_birth: '',
-        })
-        setShowForm(false)
-        await fetchStudents()
-        alert('Student added successfully! Credentials: ' + formData.username + ' / ' + formData.password)
-      } else {
-        alert(`Error: ${result.error}`)
-        console.error('[v0] Create student error:', result.error)
+    if (formData.father_mobile) {
+      const fatherResult = validatePhoneNumber(formData.father_mobile)
+      if (!fatherResult.isValid) {
+        errors.father_mobile = fatherResult.errors.join(', ')
       }
-    } catch (error) {
-      console.error('[v0] Submit error:', error)
-      alert('Failed to create student')
-    } finally {
-      setSubmitting(false)
+    }
+
+    if (formData.mother_mobile) {
+      const motherResult = validatePhoneNumber(formData.mother_mobile)
+      if (!motherResult.isValid) {
+        errors.mother_mobile = motherResult.errors.join(', ')
+      }
     }
   }
+
+  setFormErrors(errors)
+  if (Object.keys(errors).length > 0) {
+    return
+  }
+
+  if (!formData.phone_number || !formData.password || !formData.full_name) {
+    alert('Please fill in all required fields')
+    return
+  }
+
+  setSubmitting(true)
+
+  try {
+    const submitData = {
+      ...formData,
+      username: formData.phone_number.replace(/\D/g, ''),
+    }
+    const result = await createStudent(submitData)
+
+    if (result.success) {
+      console.log('[v0] Student created:', result.data)
+      setFormData({
+        username: '',
+        password: '',
+        full_name: '',
+        roll_number: '',
+        standard: '',
+        division: '',
+        phone_number: '',
+        father_mobile: '',
+        mother_mobile: '',
+        date_of_birth: '',
+      })
+      setFormErrors({})
+      setShowForm(false)
+      await fetchStudents()
+      alert(`Student added successfully!\n\nLogin credentials:\nUsername (Phone): ${submitData.username}\nPassword: ${submitData.password}`)
+    } else {
+      alert(`Error: ${result.error}`)
+      console.error('[v0] Create student error:', result.error)
+    }
+  } catch (error) {
+    console.error('[v0] Submit error:', error)
+    alert('Failed to create student')
+  } finally {
+    setSubmitting(false)
+  }
+}
 
   const handleDelete = async (studentId: string) => {
     if (!confirm('Are you sure you want to delete this student?')) return
@@ -136,57 +174,58 @@ export default function StudentProfilesPage() {
     }
   }
 
-  const handleEditStudent = (student: StudentProfile) => {
-    setEditingStudentId(student.id)
-    setFormData({
-      username: typeof student.user_id === 'object' ? student.user_id.username : '',
-      password: '',
-      full_name: student.student_name || (typeof student.user_id === 'object' ? student.user_id.full_name : ''),
-      email: typeof student.user_id === 'object' ? student.user_id.email : '',
-      roll_number: student.roll_number,
-      standard: student.standard,
-      division: student.division,
-      phone_number: student.phone_number || '',
-      parent_contact: student.parent_contact || '',
-      date_of_birth: student.date_of_birth || '',
-    })
-    setShowForm(true)
-  }
+const handleEditStudent = (student: StudentProfile) => {
+  setEditingStudentId(student.id)
+  const userObj = student.user as { full_name?: string; email?: string; username?: string } | undefined
+  setFormData({
+    username: userObj?.username || '',
+    password: '',
+    full_name: student.student_name || userObj?.full_name || '',
+    roll_number: student.roll_number,
+    standard: student.standard,
+    division: student.division,
+    phone_number: student.phone_number || '',
+    father_mobile: student.father_mobile || '',
+    mother_mobile: student.mother_mobile || '',
+    date_of_birth: student.date_of_birth || '',
+  })
+  setShowForm(true)
+}
 
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (!editingStudentId) return
 
-    try {
-      const result = await updateStudent(editingStudentId, {
-        full_name: formData.full_name,
-        email: formData.email,
-        roll_number: formData.roll_number,
-        standard: formData.standard,
-        division: formData.division,
-        phone_number: formData.phone_number,
-        parent_contact: formData.parent_contact,
-        date_of_birth: formData.date_of_birth,
-      })
+  try {
+    const result = await updateStudent(editingStudentId, {
+      full_name: formData.full_name,
+      roll_number: formData.roll_number,
+      standard: formData.standard,
+      division: formData.division,
+      phone_number: formData.phone_number,
+      father_mobile: formData.father_mobile,
+      mother_mobile: formData.mother_mobile,
+      date_of_birth: formData.date_of_birth,
+    })
 
-      if (result.success) {
-        alert('Student updated successfully!')
-        setEditingStudentId(null)
-        setFormData({
-          username: '',
-          password: '',
-          full_name: '',
-          email: '',
-          roll_number: '',
-          standard: '',
-          division: '',
-          phone_number: '',
-          parent_contact: '',
-          date_of_birth: '',
-        })
-        setShowForm(false)
-        await fetchStudents()
+    if (result.success) {
+      alert('Student updated successfully!')
+      setEditingStudentId(null)
+      setFormData({
+        username: '',
+        password: '',
+        full_name: '',
+        roll_number: '',
+        standard: '',
+        division: '',
+        phone_number: '',
+        father_mobile: '',
+        mother_mobile: '',
+        date_of_birth: '',
+      })
+      setShowForm(false)
+      await fetchStudents()
       } else {
         alert(`Error: ${result.error}`)
       }
@@ -245,12 +284,13 @@ export default function StudentProfilesPage() {
     return Object.keys(groupedStudents[classNum] || {}).sort()
   }
 
-  const getStudentsForClassDivision = (classNum: string, division: string) => {
-    return (groupedStudents[classNum]?.[division] || []).filter(student =>
-      (student.student_name || student.user?.full_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.roll_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (typeof student.user_id === 'object' && student.user_id?.email ? student.user_id.email : student.user?.email || '').toLowerCase().includes(searchTerm.toLowerCase())
-    )
+const getStudentsForClassDivision = (classNum: string, division: string) => {
+    return (groupedStudents[classNum]?.[division] || []).filter(student => {
+      const studentUser = student.user as { full_name?: string; email?: string; username?: string } | undefined
+      return (student.student_name || studentUser?.full_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        student.roll_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (studentUser?.email || '').toLowerCase().includes(searchTerm.toLowerCase())
+    })
   }
 
   if (loading) return <Loading />
@@ -283,89 +323,116 @@ export default function StudentProfilesPage() {
                 <CardTitle>{editingStudentId ? 'Edit Student' : 'Add New Student'}</CardTitle>
               </CardHeader>
               <CardContent>
-                <form onSubmit={editingStudentId ? handleSaveEdit : handleSubmit} className="grid md:grid-cols-2 gap-4">
-                  {!editingStudentId && (
-                    <>
-                      <div>
-                        <Label>Username *</Label>
-                        <Input value={formData.username} onChange={(e) => setFormData({...formData, username: e.target.value})} required />
-                      </div>
-                      <div>
-                        <Label>Password *</Label>
-                        <Input type="password" value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} required />
-                      </div>
-                    </>
-                  )}
-                  <div>
-                    <Label>Full Name *</Label>
-                    <Input value={formData.full_name} onChange={(e) => setFormData({...formData, full_name: e.target.value})} required />
-                  </div>
-                  <div>
-                    <Label>Email *</Label>
-                    <Input type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} required />
-                  </div>
-                  <div>
-                    <Label>Roll Number</Label>
-                    <Input value={formData.roll_number} onChange={(e) => setFormData({...formData, roll_number: e.target.value})} />
-                  </div>
-                  <div>
-                    <Label>Class</Label>
-                    <select className="w-full border border-border rounded px-3 py-2 bg-background text-foreground" value={formData.standard} onChange={(e) => setFormData({...formData, standard: e.target.value, division: ''})}>
-                      <option value="">Select Class</option>
-                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(cls => <option key={cls} value={cls.toString()}>Class {cls}</option>)}
+<form onSubmit={editingStudentId ? handleSaveEdit : handleSubmit} className="grid md:grid-cols-2 gap-4">
+                {!editingStudentId && (
+                  <>
+                    <div>
+                      <Label>Phone Number (Username) *</Label>
+                      <Input 
+                        value={formData.phone_number} 
+                        onChange={(e) => setFormData({...formData, phone_number: e.target.value})} 
+                        placeholder="10-digit mobile number"
+                        required 
+                      />
+                      {formErrors.phone_number && (
+                        <p className="text-red-500 text-sm mt-1">{formErrors.phone_number}</p>
+                      )}
+                    </div>
+                    <div>
+                      <Label>Password * (min 6 characters)</Label>
+                      <Input 
+                        type="password" 
+                        value={formData.password} 
+                        onChange={(e) => setFormData({...formData, password: e.target.value})} 
+                        required 
+                      />
+                      {formErrors.password && (
+                        <p className="text-red-500 text-sm mt-1">{formErrors.password}</p>
+                      )}
+                    </div>
+                  </>
+                )}
+<div>
+<Label>Full Name *</Label>
+<Input value={formData.full_name} onChange={(e) => setFormData({...formData, full_name: e.target.value})} required />
+{formErrors.full_name && (
+  <p className="text-red-500 text-sm mt-1">{formErrors.full_name}</p>
+)}
+</div>
+<div>
+<Label>Roll Number</Label>
+<Input value={formData.roll_number} onChange={(e) => setFormData({...formData, roll_number: e.target.value})} />
+</div>
+                <div>
+                  <Label>Class</Label>
+                  <select className="w-full border border-border rounded px-3 py-2 bg-background text-foreground" value={formData.standard} onChange={(e) => setFormData({...formData, standard: e.target.value, division: ''})}>
+                    <option value="">Select Class</option>
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(cls => <option key={cls} value={cls.toString()}>Class {cls}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <Label>Division</Label>
+                  {!formData.standard ? (
+                    <select disabled className="w-full border border-border rounded px-3 py-2 bg-gray-100 dark:bg-gray-800 text-foreground cursor-not-allowed" value="">
+                      <option>Select Class First</option>
                     </select>
-                  </div>
-                  <div>
-                    <Label>Division</Label>
-                    {!formData.standard ? (
-                      <select disabled className="w-full border border-border rounded px-3 py-2 bg-gray-100 dark:bg-gray-800 text-foreground cursor-not-allowed" value="">
-                        <option>Select Class First</option>
-                      </select>
-                    ) : (
-                      <select className="w-full border border-border rounded px-3 py-2 bg-background text-foreground" value={formData.division} onChange={(e) => setFormData({...formData, division: e.target.value})}>
-                        <option value="">Select Division</option>
-                        <option value="A">Division A</option>
-                        <option value="B">Division B</option>
-                        <option value="C">Division C</option>
-                        <option value="D">Division D</option>
-                      </select>
-                    )}
-                  </div>
+                  ) : (
+                    <select className="w-full border border-border rounded px-3 py-2 bg-background text-foreground" value={formData.division} onChange={(e) => setFormData({...formData, division: e.target.value})}>
+                      <option value="">Select Division</option>
+                      <option value="A">Division A</option>
+                      <option value="B">Division B</option>
+                      <option value="C">Division C</option>
+                      <option value="D">Division D</option>
+                    </select>
+                  )}
+                </div>
+{editingStudentId && (
                   <div>
                     <Label>Phone Number</Label>
                     <Input value={formData.phone_number} onChange={(e) => setFormData({...formData, phone_number: e.target.value})} />
                   </div>
-                  <div>
-                    <Label>Parent Contact</Label>
-                    <Input value={formData.parent_contact} onChange={(e) => setFormData({...formData, parent_contact: e.target.value})} />
-                  </div>
-                  <div className="md:col-span-2">
-                    <Label>Date of Birth</Label>
-                    <Input type="date" value={formData.date_of_birth} onChange={(e) => setFormData({...formData, date_of_birth: e.target.value})} />
-                  </div>
-                  <div className="md:col-span-2 flex gap-3">
-                    <Button type="submit" disabled={submitting} className="bg-accent hover:bg-accent/90">
-                      {submitting ? (editingStudentId ? 'Saving...' : 'Creating...') : (editingStudentId ? 'Save Changes' : 'Add Student')}
-                    </Button>
-                    <Button type="button" variant="outline" onClick={() => {
-                      setShowForm(false)
-                      setEditingStudentId(null)
-                      setFormData({
-                        username: '',
-                        password: '',
-                        full_name: '',
-                        email: '',
-                        roll_number: '',
-                        standard: '',
-                        division: '',
-                        phone_number: '',
-                        parent_contact: '',
-                        date_of_birth: '',
-                      })
-                    }}>
-                      Cancel
-                    </Button>
-                  </div>
+                )}
+                <div>
+                  <Label>Father's Mobile Number</Label>
+                  <Input value={formData.father_mobile} onChange={(e) => setFormData({...formData, father_mobile: e.target.value})} placeholder="10-digit mobile number" />
+                  {formErrors.father_mobile && (
+                    <p className="text-red-500 text-sm mt-1">{formErrors.father_mobile}</p>
+                  )}
+                </div>
+                <div>
+                  <Label>Mother's Mobile Number</Label>
+                  <Input value={formData.mother_mobile} onChange={(e) => setFormData({...formData, mother_mobile: e.target.value})} placeholder="10-digit mobile number" />
+                  {formErrors.mother_mobile && (
+                    <p className="text-red-500 text-sm mt-1">{formErrors.mother_mobile}</p>
+                  )}
+                </div>
+                <div className="md:col-span-2">
+                  <Label>Date of Birth</Label>
+                  <Input type="date" value={formData.date_of_birth} onChange={(e) => setFormData({...formData, date_of_birth: e.target.value})} />
+                </div>
+                <div className="md:col-span-2 flex gap-3">
+                  <Button type="submit" disabled={submitting} className="bg-accent hover:bg-accent/90">
+                    {submitting ? (editingStudentId ? 'Saving...' : 'Creating...') : (editingStudentId ? 'Save Changes' : 'Add Student')}
+                  </Button>
+        <Button type="button" variant="outline" onClick={() => {
+          setShowForm(false)
+          setEditingStudentId(null)
+          setFormData({
+            username: '',
+            password: '',
+            full_name: '',
+            roll_number: '',
+            standard: '',
+            division: '',
+            phone_number: '',
+            father_mobile: '',
+            mother_mobile: '',
+            date_of_birth: '',
+          })
+        }}>
+          Cancel
+        </Button>
+                </div>
                 </form>
               </CardContent>
             </Card>
@@ -437,37 +504,41 @@ export default function StudentProfilesPage() {
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full">
-                      <thead>
-                        <tr className="border-b border-border bg-muted/50">
-                          <th className="text-left py-3 px-4 font-semibold text-foreground">Name</th>
-                          <th className="text-left py-3 px-4 font-semibold text-foreground">Roll No</th>
-                          <th className="text-left py-3 px-4 font-semibold text-foreground">Email</th>
-                          <th className="text-left py-3 px-4 font-semibold text-foreground">Phone</th>
-                          <th className="text-left py-3 px-4 font-semibold text-foreground">Parent Contact</th>
-                          <th className="text-left py-3 px-4 font-semibold text-foreground">DOB</th>
-                          <th className="text-left py-3 px-4 font-semibold text-foreground">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {getStudentsForClassDivision(selectedClass, selectedDivision).map((student) => (
-                          <tr key={student.id} className="border-b border-border hover:bg-accent/5">
-                            <td className="py-3 px-4 font-medium">{student.student_name || student.user?.full_name || 'N/A'}</td>
-                            <td className="py-3 px-4">{student.roll_number || 'N/A'}</td>
-                            <td className="py-3 px-4 text-sm">{typeof student.user_id === 'object' && student.user_id?.email ? student.user_id.email : student.user?.email || 'N/A'}</td>
-                            <td className="py-3 px-4 text-sm">{student.phone_number || 'N/A'}</td>
-                            <td className="py-3 px-4 text-sm">{student.parent_contact || 'N/A'}</td>
-                            <td className="py-3 px-4 text-sm">{student.date_of_birth || 'N/A'}</td>
-                            <td className="py-3 px-4 flex gap-2">
-                              <button onClick={() => handleEditStudent(student)} className="p-2 hover:bg-primary/10 rounded-lg transition-colors" title="Edit">
-                                <Edit className="w-4 h-4 text-primary" />
-                              </button>
-                              <button onClick={() => handleDelete(student.id)} className="p-2 hover:bg-red-100 dark:hover:bg-red-950/30 rounded-lg transition-colors" title="Delete">
-                                <Trash2 className="w-4 h-4 text-red-600" />
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
+<thead>
+                      <tr className="border-b border-border bg-muted/50">
+                        <th className="text-left py-3 px-4 font-semibold text-foreground">Name</th>
+                        <th className="text-left py-3 px-4 font-semibold text-foreground">Roll No</th>
+                        <th className="text-left py-3 px-4 font-semibold text-foreground">Email</th>
+                        <th className="text-left py-3 px-4 font-semibold text-foreground">Phone</th>
+                        <th className="text-left py-3 px-4 font-semibold text-foreground">Father's Mobile</th>
+                        <th className="text-left py-3 px-4 font-semibold text-foreground">Mother's Mobile</th>
+                        <th className="text-left py-3 px-4 font-semibold text-foreground">DOB</th>
+                        <th className="text-left py-3 px-4 font-semibold text-foreground">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {getStudentsForClassDivision(selectedClass, selectedDivision).map((student) => {
+                        const studentUser = student.user as { full_name?: string; email?: string; username?: string } | undefined
+                        return (
+                        <tr key={student.id} className="border-b border-border hover:bg-accent/5">
+                          <td className="py-3 px-4 font-medium">{student.student_name || studentUser?.full_name || 'N/A'}</td>
+                          <td className="py-3 px-4">{student.roll_number || 'N/A'}</td>
+                          <td className="py-3 px-4 text-sm">{studentUser?.email || 'N/A'}</td>
+                          <td className="py-3 px-4 text-sm">{student.phone_number || 'N/A'}</td>
+                          <td className="py-3 px-4 text-sm">{student.father_mobile || 'N/A'}</td>
+                          <td className="py-3 px-4 text-sm">{student.mother_mobile || 'N/A'}</td>
+                          <td className="py-3 px-4 text-sm">{student.date_of_birth || 'N/A'}</td>
+                          <td className="py-3 px-4 flex gap-2">
+                            <button onClick={() => handleEditStudent(student)} className="p-2 hover:bg-primary/10 rounded-lg transition-colors" title="Edit">
+                              <Edit className="w-4 h-4 text-primary" />
+                            </button>
+                            <button onClick={() => handleDelete(student.id)} className="p-2 hover:bg-red-100 dark:hover:bg-red-950/30 rounded-lg transition-colors" title="Delete">
+                          <Trash2 className="w-4 h-4 text-red-600" />
+                        </button>
+                      </td>
+                    </tr>
+                  )})}
+                </tbody>
                     </table>
                   </div>
                 )}
