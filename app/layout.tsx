@@ -8,7 +8,7 @@ const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'Shree Sardar Patel Vidhyabhavan High School - School Management System',
+  title: 'Shree Sardar Patel Vidhya Sankul - School Management System',
   description: 'Comprehensive school management platform for students and faculty',
   generator: 'v0.app',
   icons: {

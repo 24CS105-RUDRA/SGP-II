@@ -95,10 +95,21 @@ export default function LoginPage() {
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-background flex items-center justify-center p-4">
+      {/* Back to Home Button */}
+      <div className="absolute top-4 left-4">
+        <Button 
+          onClick={() => router.push('/')} 
+          variant="outline"
+          className="gap-2"
+        >
+          ← Back to Home
+        </Button>
+      </div>
+      
       <div className="w-full max-w-md">
         {/* Logo Section */}
         <div className="text-center mb-8">
-              <h1 className="text-3xl font-bold text-primary">Shree Sardar Patel Vidhyabhavan High School</h1>
+              <h1 className="text-3xl font-bold text-primary">Shree Sardar Patel Vidhya Sankul</h1>
           <p className="text-muted-foreground mt-2">School Management Portal</p>
         </div>
 
