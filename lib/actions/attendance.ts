@@ -6,25 +6,21 @@ import { supabaseAdmin } from '@/lib/supabase'
 const supabase = createClient()
 
 interface AttendanceRecord {
-  id: string
   student_id: string
-  attendance_date: string
-  status: 'present' | 'absent' | 'missing' | 'no_record'
-  subject: string
-  remarks?: string
-}
-
-interface MarkAttendanceData {
-  student_id: string
-  faculty_id: string
-  attendance_date: string
   status: 'present' | 'absent' | 'missing'
-  subject: string
-  remarks?: string
 }
 
-function isUuid(value: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+interface ClassAttendanceDoc {
+  id: string
+  standard: string
+  division: string
+  attendance_date: string
+  subject: string
+  faculty_id: string
+  marked_by: string
+  attendance_records: AttendanceRecord[]
+  created_at: string
+  updated_at: string
 }
 
 export async function getStudentRecordByUserId(userId: string): Promise<{
@@ -48,7 +44,6 @@ export async function getStudentRecordByUserId(userId: string): Promise<{
       return { success: false, error: 'Student record not found' }
     }
 
-    console.log('[v0] Student record ID:', data.id)
     return { success: true, data }
   } catch (error) {
     console.error('[v0] Error:', error)
@@ -56,53 +51,52 @@ export async function getStudentRecordByUserId(userId: string): Promise<{
   }
 }
 
-export async function markAttendance(data: MarkAttendanceData): Promise<{
-  success: boolean
-  data?: AttendanceRecord
-  error?: string
-}> {
-  try {
-    const { data: record, error } = await supabase
-      .from('attendance')
-      .upsert({
-        student_id: data.student_id,
-        faculty_id: data.faculty_id,
-        attendance_date: data.attendance_date,
-        status: data.status,
-        subject: data.subject,
-        remarks: data.remarks,
-      })
-      .select()
-      .single()
-
-    if (error) {
-      return { success: false, error: error.message }
-    }
-
-    return { success: true, data: record }
-  } catch (error) {
-    return { success: false, error: 'Failed to mark attendance' }
-  }
-}
-
 export async function getStudentAttendance(studentId: string): Promise<{
   success: boolean
-  data?: AttendanceRecord[]
+  data?: Array<{
+    id: string
+    attendance_date: string
+    status: 'present' | 'absent' | 'missing' | 'no_record'
+  }>
   error?: string
 }> {
   try {
-    const { data: records, error } = await supabase
+    const { data: student, error: studentError } = await supabaseAdmin
+      .from('students')
+      .select('standard, division')
+      .eq('id', studentId)
+      .single()
+
+    if (studentError || !student) {
+      return { success: false, error: 'Student not found' }
+    }
+
+    const { data: attendanceDocs, error } = await supabaseAdmin
       .from('attendance')
-      .select('*')
-      .eq('student_id', studentId)
+      .select('id, attendance_date, attendance_records')
+      .eq('standard', student.standard)
+      .eq('division', student.division)
       .order('attendance_date', { ascending: false })
 
     if (error) {
+      console.error('[v0] Error fetching attendance:', error)
       return { success: false, error: error.message }
     }
 
-    return { success: true, data: records }
+    const result = ((attendanceDocs as any[]) || []).map((doc: any) => {
+      const studentRecord = doc.attendance_records?.find(
+        (r: AttendanceRecord) => r.student_id === studentId
+      )
+      return {
+        id: doc.id,
+        attendance_date: doc.attendance_date,
+        status: studentRecord?.status || 'no_record',
+      }
+    })
+
+    return { success: true, data: result }
   } catch (error) {
+    console.error('[v0] Error:', error)
     return { success: false, error: 'Failed to fetch attendance' }
   }
 }
@@ -113,64 +107,91 @@ export async function getAttendanceByMonth(
   month: number
 ): Promise<{
   success: boolean
-  data?: AttendanceRecord[]
+  data?: Array<{
+    id: string
+    attendance_date: string
+    status: 'present' | 'absent' | 'missing' | 'no_record'
+  }>
   error?: string
 }> {
   try {
-    const startDate = `${year}-${String(month).padStart(2, '0')}-01`
-    const endDate = new Date(year, month, 0)
-    const endDateStr = endDate.toISOString().split('T')[0]
+    const { data: student, error: studentError } = await supabaseAdmin
+      .from('students')
+      .select('standard, division')
+      .eq('id', studentId)
+      .single()
 
-    const { data: records, error } = await supabase
+    if (studentError || !student) {
+      return { success: false, error: 'Student not found' }
+    }
+
+    const startDate = `${year}-${String(month).padStart(2, '0')}-01`
+    const endDate = new Date(year, month, 0).toISOString().split('T')[0]
+
+    const { data: attendanceDocs, error } = await supabaseAdmin
       .from('attendance')
-      .select('*')
-      .eq('student_id', studentId)
+      .select('id, attendance_date, attendance_records')
+      .eq('standard', student.standard)
+      .eq('division', student.division)
       .gte('attendance_date', startDate)
-      .lte('attendance_date', endDateStr)
+      .lte('attendance_date', endDate)
       .order('attendance_date', { ascending: false })
 
     if (error) {
+      console.error('[v0] Error fetching attendance:', error)
       return { success: false, error: error.message }
     }
 
-    return { success: true, data: records }
+    const result = (attendanceDocs || []).map((doc: any) => {
+      const studentRecord = doc.attendance_records?.find(
+        (r: AttendanceRecord) => r.student_id === studentId
+      )
+      return {
+        id: doc.id,
+        attendance_date: doc.attendance_date,
+        status: studentRecord?.status || 'no_record',
+      }
+    })
+
+    return { success: true, data: result }
   } catch (error) {
+    console.error('[v0] Error:', error)
     return { success: false, error: 'Failed to fetch attendance' }
   }
 }
 
 export async function getClassAttendance(
   facultyId: string,
-  attendanceDate: string
+  attendanceDate: string,
+  standard?: string,
+  division?: string
 ): Promise<{
   success: boolean
   data?: any[]
   error?: string
 }> {
   try {
-    const { data: records, error } = await supabase
+    let query = supabaseAdmin
       .from('attendance')
-      .select(
-        `
-        *,
-        student_id (
-          id,
-          user_id,
-          roll_number,
-          standard,
-          division
-        )
-      `
-      )
-      .eq('faculty_id', facultyId)
+      .select('*')
       .eq('attendance_date', attendanceDate)
+
+    if (standard) {
+      query = query.eq('standard', standard)
+    }
+    if (division) {
+      query = query.eq('division', division)
+    }
+
+    const { data, error } = await query
 
     if (error) {
       return { success: false, error: error.message }
     }
 
-    return { success: true, data: records }
+    return { success: true, data }
   } catch (error) {
+    console.error('[v0] Error:', error)
     return { success: false, error: 'Failed to fetch class attendance' }
   }
 }
@@ -187,30 +208,68 @@ export async function getAttendanceStats(studentId: string): Promise<{
   error?: string
 }> {
   try {
-    const { data: records, error } = await supabase
+    const { data: student, error: studentError } = await supabaseAdmin
+      .from('students')
+      .select('standard, division')
+      .eq('id', studentId)
+      .single()
+
+    if (studentError || !student) {
+      return { success: false, error: 'Student not found' }
+    }
+
+    const { data: attendanceDocs, error } = await supabaseAdmin
       .from('attendance')
-      .select('status')
-      .eq('student_id', studentId)
-      .neq('status', 'no_record')
+      .select('attendance_records')
+      .eq('standard', student.standard)
+      .eq('division', student.division)
 
     if (error) {
       return { success: false, error: error.message }
     }
 
-    const stats = {
-      total: records.length,
-      present: records.filter((r) => r.status === 'present').length,
-      absent: records.filter((r) => r.status === 'absent').length,
-      missing: records.filter((r) => r.status === 'missing').length,
-      percentage: 0,
+    let present = 0
+    let absent = 0
+    let missing = 0
+
+    ;(attendanceDocs || []).forEach((doc: any) => {
+      const studentRecord = doc.attendance_records?.find(
+        (r: AttendanceRecord) => r.student_id === studentId
+      )
+      if (studentRecord) {
+        if (studentRecord.status === 'present') present++
+        else if (studentRecord.status === 'absent') absent++
+        else if (studentRecord.status === 'missing') missing++
+      }
+    })
+
+    const total = present + absent + missing
+
+    return {
+      success: true,
+      data: {
+        total,
+        present,
+        absent,
+        missing,
+        percentage: total > 0 ? (present / total) * 100 : 0,
+      },
     }
-
-    stats.percentage = stats.total > 0 ? (stats.present / stats.total) * 100 : 0
-
-    return { success: true, data: stats }
   } catch (error) {
+    console.error('[v0] Error:', error)
     return { success: false, error: 'Failed to fetch attendance stats' }
   }
+}
+
+interface MarkAttendanceData {
+  student_id: string
+  faculty_id: string
+  attendance_date: string
+  status: 'present' | 'absent' | 'missing'
+  subject: string
+  standard: string
+  division: string
+  remarks?: string
 }
 
 export async function markBulkAttendance(
@@ -229,14 +288,14 @@ export async function markBulkAttendance(
       student_id: (record.student_id || '').trim(),
     }))
 
-    const malformedRecords = normalizedRecords.filter((record) => !isUuid(record.student_id))
-    if (malformedRecords.length > 0) {
-      console.error('[v0] Malformed student IDs in attendance records:', malformedRecords)
-      return { success: false, error: `${malformedRecords.length} record(s) have invalid student IDs` }
+    const firstRecord = normalizedRecords[0]
+    const { standard, division, attendance_date, subject, faculty_id } = firstRecord
+
+    if (!standard || !division) {
+      return { success: false, error: 'Standard and division are required' }
     }
 
-    // Validate that all students exist
-    const studentIds = normalizedRecords.map((record) => record.student_id)
+    const studentIds = normalizedRecords.map((r) => r.student_id)
     const { data: existingStudents, error: studentError } = await supabaseAdmin
       .from('students')
       .select('id')
@@ -247,41 +306,61 @@ export async function markBulkAttendance(
       return { success: false, error: 'Error validating students' }
     }
 
-    const validStudentIds = new Set(existingStudents?.map((student) => student.id) || [])
-    const invalidRecords = normalizedRecords.filter((record) => !validStudentIds.has(record.student_id))
+    const validStudentIds = new Set(existingStudents?.map((s: { id: string }) => s.id) || [])
+    const invalidRecords = normalizedRecords.filter((r) => !validStudentIds.has(r.student_id))
 
     if (invalidRecords.length > 0) {
-      console.error('[v0] Invalid students in attendance records:', invalidRecords)
-      return { success: false, error: `${invalidRecords.length} student(s) not found in database` }
+      console.error('[v0] Invalid students:', invalidRecords)
+      return { success: false, error: `${invalidRecords.length} student(s) not found` }
     }
 
-    // First, delete existing attendance records for these students on this date
+    const attendanceRecords: AttendanceRecord[] = normalizedRecords.map((record) => ({
+      student_id: record.student_id,
+      status: record.status,
+    }))
+
+    const markedBy = faculty_id
+
+    console.log('[v0] Inserting attendance for:', { standard, division, attendance_date, subject, studentCount: attendanceRecords.length })
+
+    // Delete existing attendance for this class/date/subject first
     const { error: deleteError } = await supabaseAdmin
       .from('attendance')
       .delete()
-      .in('student_id', studentIds)
-      .eq('attendance_date', normalizedRecords[0].attendance_date)
+      .eq('standard', standard)
+      .eq('division', division)
+      .eq('attendance_date', attendance_date)
+      .eq('subject', subject)
 
     if (deleteError) {
-      console.error('[v0] Error deleting existing records:', deleteError)
-      return { success: false, error: 'Error clearing previous attendance' }
+      console.error('[v0] Delete error:', deleteError)
+      return { success: false, error: 'Error clearing previous attendance: ' + deleteError.message }
     }
 
-    // Then insert the new records
-    const { error } = await supabase
+    console.log('[v0] Creating new attendance document')
+    const { error: insertError } = await supabaseAdmin
       .from('attendance')
-      .insert(normalizedRecords)
+      .insert({
+        standard,
+        division,
+        attendance_date,
+        subject,
+        faculty_id,
+        marked_by: markedBy,
+        attendance_records: attendanceRecords,
+      })
 
-    if (error) {
-      console.error('[v0] Attendance insert error:', error)
-      return { success: false, error: error.message }
+    if (insertError) {
+      console.error('[v0] Insert error:', insertError)
+      return { success: false, error: insertError.message }
     }
 
     console.log('[v0] Attendance marked successfully for', records.length, 'students')
     return { success: true }
-  } catch (error) {
+  } catch (error: any) {
     console.error('[v0] Mark attendance error:', error)
-    return { success: false, error: 'Failed to mark bulk attendance' }
+    const errorMessage = error?.message || error?.toString() || 'Failed to mark bulk attendance'
+    return { success: false, error: errorMessage }
   }
 }
 
@@ -329,49 +408,31 @@ export async function getAssignedStudentsForAttendance(facultyId: string): Promi
   error?: string
 }> {
   try {
-    const { data: assignments, error } = await supabaseAdmin
-      .from('faculty_student_assignments')
-      .select(
-        `
-        id,
-        student_id,
-        faculty_id,
-        assigned_date,
-        students (
-          id,
-          standard,
-          division,
-          student_name,
-          roll_number
-        )
-      `
-      )
-      .eq('faculty_id', facultyId)
-      .order('assigned_date', { ascending: true })
+    const { data: faculty, error: facultyError } = await supabaseAdmin
+      .from('faculty')
+      .select('assigned_standard, assigned_division')
+      .eq('id', facultyId)
+      .single()
+
+    if (facultyError || !faculty) {
+      return { success: false, error: 'Faculty not found' }
+    }
+
+    const { data: students, error } = await supabaseAdmin
+      .from('students')
+      .select('id, standard, division, student_name, roll_number')
+      .eq('standard', faculty.assigned_standard)
+      .eq('division', faculty.assigned_division)
+      .order('roll_number')
 
     if (error) {
-      console.error('[v0] Error fetching assigned students for attendance:', error)
+      console.error('[v0] Error fetching students:', error)
       return { success: false, error: error.message }
     }
 
-    // Map and flatten the data, filtering out assignments where student doesn't exist
-    const mappedData = assignments
-      ?.filter((assignment: any) => assignment.students !== null)
-      .map((assignment: any) => ({
-        id: assignment.id,
-        student_id: assignment.student_id,
-        faculty_id: assignment.faculty_id,
-        student_name: assignment.students?.student_name || 'N/A',
-        class: assignment.students?.standard || 'N/A',
-        division: assignment.students?.division || 'N/A',
-        roll_number: assignment.students?.roll_number,
-      })) || []
-
-    console.log('[v0] Mapped attendance students:', mappedData)
-
-    return { success: true, data: mappedData }
+    return { success: true, data: students || [] }
   } catch (error) {
-    console.error('[v0] Error in getAssignedStudentsForAttendance:', error)
+    console.error('[v0] Error:', error)
     return { success: false, error: 'Failed to fetch assigned students' }
   }
 }

@@ -100,6 +100,39 @@ export interface Notice {
   updated_at?: string
 }
 
+export interface Installment {
+  installment_number: number
+  amount: number
+  due_date: string
+  paid_date?: string
+  paid_amount: number
+  status: 'pending' | 'partial' | 'paid' | 'overdue'
+}
+
+export interface FeeStructure {
+  id: string
+  standard: string
+  total_amount: number
+  number_of_installments: number
+  installments: Installment[]
+  is_active: boolean
+  created_by: string
+  created_at: string
+  updated_at: string
+}
+
+export interface StudentFee {
+  id: string
+  student_id: string
+  fee_structure_id: string
+  total_amount: number
+  total_paid: number
+  installments: Installment[]
+  status: 'pending' | 'partial' | 'paid'
+  created_at: string
+  updated_at: string
+}
+
 export interface Fee {
   id: string
   student_id: string

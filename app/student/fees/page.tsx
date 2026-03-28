@@ -4,13 +4,20 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { StudentSidebar } from '@/components/layout/student-sidebar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { CreditCard, CheckCircle2, AlertCircle, TrendingUp } from 'lucide-react'
+import { Calendar, TrendingUp } from 'lucide-react'
+import { getStudentFee } from '@/lib/actions/fees'
+
+interface Installment {
+  installment_number: number
+  amount: number
+  due_date: string
+}
 
 export default function FeesDetailsPage() {
   const router = useRouter()
-  const [user, setUser] = useState(null)
+  const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [feeData, setFeeData] = useState<any>(null)
 
   useEffect(() => {
     const session = localStorage.getItem('userSession')
@@ -21,59 +28,28 @@ export default function FeesDetailsPage() {
       return
     }
 
-    setUser(JSON.parse(session))
+    const userData = JSON.parse(session)
+    setUser(userData)
     setLoading(false)
   }, [router])
 
-  if (loading) return <div>Loading...</div>
-  if (!user) return null
+  useEffect(() => {
+    if (user?.id) {
+      loadStudentFee()
+    }
+  }, [user])
 
-  const feeStructure = [
-    { category: 'Tuition Fee', amount: 50000, frequency: 'Per Year' },
-    { category: 'Library Fee', amount: 2000, frequency: 'Per Year' },
-    { category: 'Sports Fee', amount: 3000, frequency: 'Per Year' },
-    { category: 'Activity Fee', amount: 1500, frequency: 'Per Year' },
-    { category: 'Technology Fee', amount: 1000, frequency: 'Per Year' },
-  ]
-
-  const totalFeePerYear = feeStructure.reduce((sum, fee) => sum + fee.amount, 0)
-
-  const paymentHistory = [
-    {
-      id: 1,
-      date: '2024-01-15',
-      description: 'Annual Fee (FY 2024-25)',
-      amount: totalFeePerYear,
-      status: 'paid',
-      referenceNo: 'TXN-2024-001',
-    },
-    {
-      id: 2,
-      date: '2024-02-15',
-      description: 'Activity Fee - Science Exhibition',
-      amount: 500,
-      status: 'pending',
-      referenceNo: 'TXN-2024-002',
-    },
-    {
-      id: 3,
-      date: '2023-12-20',
-      description: 'Annual Fee (FY 2023-24)',
-      amount: totalFeePerYear,
-      status: 'paid',
-      referenceNo: 'TXN-2023-001',
-    },
-  ]
-
-  const pendingAmount = paymentHistory
-    .filter((p) => p.status === 'pending')
-    .reduce((sum, p) => sum + p.amount, 0)
-
-  const paidAmount = paymentHistory
-    .filter((p) => p.status === 'paid')
-    .reduce((sum, p) => sum + p.amount, 0)
+  const loadStudentFee = async () => {
+    const result = await getStudentFee(user.id)
+    if (result.success && result.data) {
+      setFeeData(result.data)
+    } else {
+      setFeeData(null)
+    }
+  }
 
   const formatDate = (date: string) => {
+    if (!date) return '-'
     return new Date(date).toLocaleDateString('en-IN', {
       day: '2-digit',
       month: 'short',
@@ -88,128 +64,73 @@ export default function FeesDetailsPage() {
     }).format(amount)
   }
 
+  if (loading) return <div>Loading...</div>
+  if (!user) return null
+
+  const installments: Installment[] = feeData?.installments || []
+  const totalAmount = feeData?.total_amount || 0
+
   return (
     <div className="flex min-h-screen bg-background">
       <StudentSidebar activeSection="fees" />
 
       <main className="flex-1 overflow-auto">
         <div className="p-4 md:p-8">
-          <h1 className="text-3xl font-bold text-primary mb-8">Fees & Payment</h1>
+          <h1 className="text-3xl font-bold text-primary mb-8">My Fees</h1>
 
-          {/* Fee Summary */}
-          <div className="grid md:grid-cols-3 gap-6 mb-8">
-            <Card className="border-2 border-primary/20">
+          {!feeData ? (
+            <Card className="p-8 text-center">
+              <p className="text-muted-foreground">
+                No fee structure has been created for Class {user.standard}. 
+                Please contact your school administrator.
+              </p>
+            </Card>
+          ) : (
+            <Card>
               <CardHeader>
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-primary" />
-                  Total Annual Fee
-                </CardTitle>
+                <CardTitle className="text-xl">Fee Details - Class {user.standard}</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold text-primary">
-                  {formatCurrency(totalFeePerYear)}
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-2 border-green-500/20">
-              <CardHeader>
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-green-600" />
-                  Paid
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-bold text-green-600 dark:text-green-400">
-                  {formatCurrency(paidAmount)}
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className={`border-2 ${pendingAmount > 0 ? 'border-red-500/20' : 'border-green-500/20'}`}>
-              <CardHeader>
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <AlertCircle className={`w-4 h-4 ${pendingAmount > 0 ? 'text-red-600' : 'text-green-600'}`} />
-                  {pendingAmount > 0 ? 'Pending' : 'All Clear'}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className={`text-3xl font-bold ${pendingAmount > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
-                  {formatCurrency(pendingAmount)}
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Fee Structure */}
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle>Fee Structure - FY 2024-25</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {feeStructure.map((fee, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between p-4 border border-border rounded-lg hover:border-primary transition-colors"
-                  >
-                    <div className="flex-1">
-                      <p className="font-semibold text-foreground">{fee.category}</p>
-                      <p className="text-xs text-muted-foreground">{fee.frequency}</p>
-                    </div>
-                    <p className="text-lg font-bold text-primary">{formatCurrency(fee.amount)}</p>
+                <div className="mb-6 p-4 bg-primary/5 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <TrendingUp className="w-5 h-5 text-primary" />
+                    <span className="text-lg font-semibold">Total Annual Fee</span>
                   </div>
-                ))}
-                <div className="p-4 rounded-lg bg-primary/5 border-2 border-primary">
-                  <div className="flex items-center justify-between">
-                    <p className="font-bold text-foreground">Total Annual Fee</p>
-                    <p className="text-2xl font-bold text-primary">{formatCurrency(totalFeePerYear)}</p>
-                  </div>
+                  <p className="text-3xl font-bold text-primary">
+                    {formatCurrency(totalAmount)}
+                  </p>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
 
-          {/* Payment History */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CreditCard className="w-5 h-5" />
-                Payment History
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {paymentHistory.map((payment) => (
-                  <div
-                    key={payment.id}
-                    className="p-4 border border-border rounded-lg hover:border-primary transition-colors"
-                  >
-                    <div className="flex items-start justify-between gap-4 mb-2">
-                      <div className="flex-1">
-                        <h4 className="font-semibold text-foreground">{payment.description}</h4>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {formatDate(payment.date)} • Ref: {payment.referenceNo}
+                <div>
+                  <h3 className="font-semibold mb-4">Installments</h3>
+                  <div className="space-y-3">
+                    {installments.map((inst) => (
+                      <div
+                        key={inst.installment_number}
+                        className="flex items-center justify-between p-4 border border-border rounded-lg"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center font-bold text-sm">
+                            {inst.installment_number}
+                          </div>
+                          <div>
+                            <p className="font-semibold">Installment {inst.installment_number}</p>
+                            <p className="text-sm text-muted-foreground flex items-center gap-1">
+                              <Calendar className="w-3 h-3" />
+                              Due: {formatDate(inst.due_date)}
+                            </p>
+                          </div>
+                        </div>
+                        <p className="text-lg font-bold text-foreground">
+                          {formatCurrency(inst.amount)}
                         </p>
                       </div>
-                      <div className="text-right flex-shrink-0">
-                        <p className="text-lg font-bold text-primary">{formatCurrency(payment.amount)}</p>
-                        <Badge
-                          className={
-                            payment.status === 'paid'
-                              ? 'bg-green-600 hover:bg-green-700'
-                              : 'bg-yellow-600 hover:bg-yellow-700'
-                          }
-                        >
-                          {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
-                        </Badge>
-                      </div>
-                    </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </main>
     </div>

@@ -41,8 +41,11 @@ export type Priority = typeof PRIORITIES[number]
 export const ATTENDANCE_STATUS = ['present', 'absent', 'late'] as const
 export type AttendanceStatus = typeof ATTENDANCE_STATUS[number]
 
-export const PAYMENT_STATUS = ['pending', 'partial', 'paid'] as const
+export const PAYMENT_STATUS = ['pending', 'partial', 'paid', 'overdue'] as const
 export type PaymentStatus = typeof PAYMENT_STATUS[number]
+
+export const INSTALLMENT_STATUS = ['pending', 'partial', 'paid', 'overdue'] as const
+export type InstallmentStatus = typeof INSTALLMENT_STATUS[number]
 
 export const USER_ROLES = ['student', 'faculty', 'admin'] as const
 export type UserRole = typeof USER_ROLES[number]
@@ -68,6 +71,14 @@ export const FEE_TYPES = [
 ] as const
 
 export const PAYMENT_METHODS = ['Cash', 'Card', 'UPI', 'Bank Transfer', 'Cheque'] as const
+
+export const FEE_CONSTRAINTS = {
+  MIN_AMOUNT: 100,
+  MAX_AMOUNT: 10000000,
+  MIN_INSTALLMENTS: 1,
+  MAX_INSTALLMENTS: 12,
+  MIN_INSTALLMENT_AMOUNT: 100,
+} as const
 
 export const ACCOUNT_LOCKOUT = {
   MAX_ATTEMPTS: 5,

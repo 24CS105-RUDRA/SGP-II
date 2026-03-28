@@ -16,18 +16,9 @@ import {
 import { AlertCircle, Loader2, Eye, EyeOff } from 'lucide-react'
 import { loginUser } from '@/lib/actions/auth'
 
-const BATCH_YEARS = [
-  '2025-26',
-  '2026-27',
-  '2027-28',
-  '2028-29',
-  '2029-30',
-]
-
 export default function LoginPage() {
   const router = useRouter()
   const [role, setRole] = useState<'student' | 'faculty' | 'admin'>('admin')
-  const [year, setYear] = useState<string>('')
   const [username, setUsername] = useState<string>('')
   const [password, setPassword] = useState<string>('')
   const [showPassword, setShowPassword] = useState(false)
@@ -40,12 +31,6 @@ export default function LoginPage() {
     setLoading(true)
 
     // Validate inputs
-    if (role === 'student' && !year) {
-      setError('Batch year is required for students')
-      setLoading(false)
-      return
-    }
-
     if (!username || !password) {
       setError('Username and password are required')
       setLoading(false)
@@ -71,7 +56,6 @@ export default function LoginPage() {
       username: result.data?.username,
       name: result.data?.full_name,
       role: result.data?.role,
-      year: role === 'admin' ? 'admin' : year,
       email: result.data?.email,
       standard: result.data?.standard,
       division: result.data?.division,
@@ -134,7 +118,7 @@ export default function LoginPage() {
                 <Label htmlFor="role" className="text-foreground font-semibold">
                   Login As
                 </Label>
-                <Select value={role} onValueChange={(v) => { setRole(v as 'student' | 'faculty' | 'admin'); setYear('') }}>
+                <Select value={role} onValueChange={(v) => { setRole(v as 'student' | 'faculty' | 'admin') }}>
                   <SelectTrigger id="role" className="bg-background border-border">
                     <SelectValue placeholder="Select your role" />
                   </SelectTrigger>
@@ -146,26 +130,7 @@ export default function LoginPage() {
                 </Select>
               </div>
 
-              {/* Batch Year - For Students */}
-              {role === 'student' && (
-                <div className="space-y-2">
-                  <Label htmlFor="batch" className="text-foreground font-semibold">
-                    Batch Year
-                  </Label>
-                  <Select value={year} onValueChange={setYear}>
-                    <SelectTrigger id="batch" className="bg-background border-border">
-                      <SelectValue placeholder="Select batch year" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {BATCH_YEARS.map((batchYear) => (
-                        <SelectItem key={batchYear} value={batchYear}>
-                          {batchYear}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+
 
 {/* Username */}
             <div className="space-y-2">

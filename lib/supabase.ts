@@ -40,24 +40,26 @@ if (!globalMongo.__mongoClientPromise) {
 }
 
 const relationMap: Record<string, Record<string, string>> = {
-attendance: { student_id: 'students', faculty_id: 'faculty' },
-class_faculty_assignments: { faculty_id: 'faculty' },
-faculty: { user_id: 'users' },
-faculty_student_assignments: { student_id: 'students', faculty_id: 'faculty' },
-fees: { student_id: 'students' },
-gallery_events: { created_by: 'users' },
-gallery_images: { event_id: 'gallery_events' },
-homework: { faculty_id: 'faculty' },
-homework_submissions: { homework_id: 'homework', student_id: 'students' },
-notices: { created_by: 'users' },
-students: { user_id: 'users' },
-study_materials: { faculty_id: 'faculty' },
-study_material_folders: { faculty_id: 'faculty' },
-timetable: { faculty_id: 'faculty' },
+  attendance: { faculty_id: 'faculty', marked_by: 'users' },
+  class_faculty_assignments: { faculty_id: 'faculty' },
+  faculty: { user_id: 'users' },
+  faculty_student_assignments: { student_id: 'students', faculty_id: 'faculty' },
+  fees: { student_id: 'students' },
+  fee_structure: { created_by: 'users' },
+  student_fees: { student_id: 'students', fee_structure_id: 'fee_structure' },
+  gallery_events: { created_by: 'users' },
+  gallery_images: { event_id: 'gallery_events' },
+  homework: { faculty_id: 'faculty' },
+  homework_submissions: { homework_id: 'homework', student_id: 'students' },
+  notices: { created_by: 'users' },
+  students: { user_id: 'users' },
+  study_materials: { faculty_id: 'faculty' },
+  study_material_folders: { faculty_id: 'faculty' },
+  timetable: { faculty_id: 'faculty' },
 }
 
 const upsertKeys: Record<string, string[]> = {
-  attendance: ['student_id', 'attendance_date', 'subject'],
+  attendance: ['standard', 'division', 'attendance_date', 'subject'],
   class_faculty_assignments: ['standard', 'division', 'faculty_id', 'subject'],
   faculty_student_assignments: ['student_id', 'faculty_id'],
   homework_submissions: ['homework_id', 'student_id'],
@@ -65,10 +67,13 @@ const upsertKeys: Record<string, string[]> = {
 }
 
 const validFields: Record<string, Set<string>> = {
-students: new Set(['id', 'user_id', 'roll_number', 'standard', 'division', 'student_name', 'phone_number', 'father_mobile', 'mother_mobile', 'date_of_birth', 'created_at', 'updated_at']),
-faculty: new Set(['id', 'user_id', 'employee_id', 'department', 'subject', 'faculty_name', 'phone_number', 'assigned_standard', 'assigned_division', 'created_at', 'updated_at']),
-users: new Set(['id', 'username', 'password_hash', 'full_name', 'email', 'role', 'year_of_study', 'division', 'standard', 'created_at', 'updated_at']),
-notices: new Set(['id', 'created_by', 'title', 'content', 'notice_type', 'priority', 'is_published', 'published_date', 'created_at', 'updated_at']),
+  students: new Set(['id', 'user_id', 'roll_number', 'standard', 'division', 'student_name', 'phone_number', 'father_mobile', 'mother_mobile', 'date_of_birth', 'created_at', 'updated_at']),
+  faculty: new Set(['id', 'user_id', 'employee_id', 'department', 'subject', 'faculty_name', 'phone_number', 'assigned_standard', 'assigned_division', 'created_at', 'updated_at']),
+  users: new Set(['id', 'username', 'password_hash', 'full_name', 'email', 'role', 'year_of_study', 'division', 'standard', 'created_at', 'updated_at']),
+  notices: new Set(['id', 'created_by', 'title', 'content', 'notice_type', 'priority', 'is_published', 'published_date', 'created_at', 'updated_at']),
+  fee_structure: new Set(['id', 'standard', 'total_amount', 'number_of_installments', 'installments', 'is_active', 'created_by', 'created_at', 'updated_at']),
+  student_fees: new Set(['id', 'student_id', 'fee_structure_id', 'total_amount', 'total_paid', 'installments', 'status', 'created_at', 'updated_at']),
+  attendance: new Set(['id', 'standard', 'division', 'attendance_date', 'subject', 'faculty_id', 'marked_by', 'attendance_records', 'created_at', 'updated_at']),
 }
 
 async function getDb() {
@@ -93,10 +98,15 @@ async function ensureMongoSetup() {
       db.collection('students').createIndex({ phone_number: 1 }, { unique: true, sparse: true }),
       db.collection('faculty').createIndex({ user_id: 1 }, { unique: true }),
       db.collection('faculty').createIndex({ phone_number: 1 }, { unique: true, sparse: true }),
-      db.collection('attendance').createIndex({ student_id: 1, attendance_date: 1, subject: 1 }, { unique: true }),
+      db.collection('attendance').createIndex({ standard: 1, division: 1, attendance_date: 1, subject: 1 }, { unique: true }),
+      db.collection('attendance').createIndex({ attendance_date: 1 }),
       db.collection('homework_submissions').createIndex({ homework_id: 1, student_id: 1 }, { unique: true }),
       db.collection('faculty_student_assignments').createIndex({ student_id: 1, faculty_id: 1 }, { unique: true }),
       db.collection('class_faculty_assignments').createIndex({ standard: 1, division: 1, faculty_id: 1, subject: 1 }, { unique: true }),
+      db.collection('fee_structure').createIndex({ standard: 1 }, { unique: true }),
+      db.collection('fee_structure').createIndex({ is_active: 1 }),
+      db.collection('student_fees').createIndex({ student_id: 1 }, { unique: true }),
+      db.collection('student_fees').createIndex({ fee_structure_id: 1 }),
     ])
 
     const admin = await db.collection('users').findOne({ username: 'admin', role: 'admin' })
@@ -306,6 +316,7 @@ async function cascadeDelete(table: string, ids: string[]) {
     await Promise.all([
       db.collection('attendance').deleteMany({ student_id: { $in: ids } }),
       db.collection('fees').deleteMany({ student_id: { $in: ids } }),
+      db.collection('student_fees').deleteMany({ student_id: { $in: ids } }),
       db.collection('homework_submissions').deleteMany({ student_id: { $in: ids } }),
       db.collection('faculty_student_assignments').deleteMany({ student_id: { $in: ids } }),
     ])

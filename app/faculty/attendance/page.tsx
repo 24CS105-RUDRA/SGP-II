@@ -173,6 +173,8 @@ export default function AttendancePage() {
         attendance_date: selectedDate,
         status: (attendance[getAttendanceKey(student)] || 'missing') as 'present' | 'absent' | 'missing',
         subject: 'General',
+        standard: selectedStandard!,
+        division: selectedDivision!,
       }))
 
       const result = await markBulkAttendance(records)
