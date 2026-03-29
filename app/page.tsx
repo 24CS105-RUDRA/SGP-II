@@ -12,9 +12,9 @@ export default function SchoolInfoPage() {
   const [currentSlide, setCurrentSlide] = useState(0)
 
   const carouselImages = [
-    { src: '/campus.jpg', alt: 'School Campus' },
-    { src: '/gallery1.jpg', alt: 'Campus Events' },
-    { src: '/gallery2.jpg', alt: 'Activities' },
+    { src: '/image3.png', alt: 'School Campus' },
+    { src: '/image1.png', alt: 'Campus Events' },
+    { src: '/image2.png', alt: 'Activities' },
   ]
 
   useEffect(() => {
