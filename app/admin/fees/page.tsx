@@ -356,7 +356,7 @@ export default function FeesPage() {
       <AdminSidebar activeSection="fees" />
 
       <main className="flex-1 overflow-auto">
-        <div className="p-4 md:p-8">
+        <div className="p-4 pl-16 md:p-8">
           <div className="flex items-center justify-between mb-8">
             <h1 className="text-3xl font-bold text-primary">Fees Management</h1>
             <Button onClick={() => setIsCreateDialogOpen(true)} className="flex items-center gap-2">

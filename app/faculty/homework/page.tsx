@@ -190,7 +190,7 @@ export default function HomeworkPage() {
       <FacultySidebar activeSection="homework" />
 
       <main className="flex-1 overflow-auto">
-        <div className="p-4 md:p-8">
+        <div className="p-4 pl-16 md:p-8">
           <div className="flex items-center justify-between mb-8">
             <div>
               <h1 className="text-3xl font-bold text-primary">Post Homework</h1>

@@ -49,7 +49,7 @@ export function StudentSidebar({ activeSection }: StudentSidebarProps) {
       {/* Mobile Menu Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="md:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-primary text-primary-foreground"
+        className="md:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-primary text-primary-foreground shadow-lg"
       >
         {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
       </button>
@@ -60,7 +60,7 @@ export function StudentSidebar({ activeSection }: StudentSidebarProps) {
           isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         }`}
       >
-        <div className="h-screen flex flex-col pt-20 md:pt-0">
+        <div className="h-screen flex flex-col pt-16 md:pt-0">
           {/* Header */}
           <div className="p-6 border-b border-sidebar-border">
             <h2 className="text-xl font-bold text-sidebar-foreground">Student Portal</h2>

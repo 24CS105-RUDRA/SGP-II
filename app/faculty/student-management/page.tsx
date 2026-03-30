@@ -119,7 +119,7 @@ export default function StudentManagementPage() {
       <FacultySidebar activeSection="student-management" />
 
       <main className="flex-1 overflow-auto">
-        <div className="p-4 md:p-8">
+        <div className="p-4 pl-16 md:p-8">
           <div className="flex justify-between items-center mb-8">
             <h1 className="text-3xl font-bold text-primary">Manage Students</h1>
             <Button onClick={handleAutoAssign} disabled={autoAssigning} className="gap-2">

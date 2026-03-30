@@ -115,7 +115,7 @@ export default function PasswordManagementPage() {
       <AdminSidebar activeSection="password-management" />
 
       <main className="flex-1 overflow-auto">
-        <div className="p-4 md:p-8">
+        <div className="p-4 pl-16 md:p-8">
           <h1 className="text-3xl font-bold text-primary mb-8">Password Management</h1>
 
           {/* Bulk Password Reset */}
