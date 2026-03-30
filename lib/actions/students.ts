@@ -354,7 +354,8 @@ export async function getStudentByUserId(userId: string): Promise<{
         user_id (
           full_name,
           email,
-          username
+          username,
+          date_of_birth
         )
         `
       )

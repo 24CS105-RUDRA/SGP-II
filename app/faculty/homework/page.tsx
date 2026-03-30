@@ -194,11 +194,6 @@ export default function HomeworkPage() {
           <div className="flex items-center justify-between mb-8">
             <div>
               <h1 className="text-3xl font-bold text-primary ml-5 md:ml-0">Post Homework</h1>
-              {faculty && (
-                <p className="text-sm text-muted-foreground mt-2">
-                  Subject: {faculty.subject}
-                </p>
-              )}
             </div>
             <Button
               onClick={() => setShowForm(!showForm)}
@@ -302,9 +297,6 @@ export default function HomeworkPage() {
 
                   {faculty && (
                     <div className="p-3 bg-accent/10 rounded-lg">
-                      <p className="text-sm text-foreground">
-                        <strong>Subject:</strong> {faculty.subject}
-                      </p>
                       <p className="text-sm text-foreground mt-1">
                         <strong>Posted for:</strong> Standard {formData.standard || '?'}, Division {formData.division || '?'} on {formData.dueDate ? new Date(formData.dueDate).toLocaleDateString('en-IN') : '?'}
                       </p>

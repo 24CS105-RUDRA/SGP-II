@@ -127,7 +127,14 @@ export default function StudentProfilePage() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Date of Birth</p>
-                  <p className="text-lg font-semibold text-foreground">{student?.date_of_birth || 'N/A'}</p>
+                  <p className="text-lg font-semibold text-foreground" id="dob-display">
+                    {/* Check in students table first, then in user table */}
+                    {(student as any)?.date_of_birth 
+                      ? (student as any).date_of_birth 
+                      : (student?.user as any)?.date_of_birth 
+                        ? (student?.user as any).date_of_birth 
+                        : 'N/A'}
+                  </p>
                 </div>
               </div>
             </CardContent>

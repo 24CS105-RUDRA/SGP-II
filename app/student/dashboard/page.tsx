@@ -14,7 +14,6 @@ import {
   FileText, 
   BookOpen,
   Users,
-  AlertCircle,
   Clock,
   MessageSquare
 } from 'lucide-react'
@@ -24,7 +23,6 @@ interface UserSession {
   username: string
   name: string
   role: string
-  year: string
 }
 
 interface Category {
@@ -103,13 +101,6 @@ export default function StudentDashboard() {
       bgColor: 'bg-indigo-50 dark:bg-indigo-950/30'
     },
     {
-      title: 'Syllabus',
-      icon: <AlertCircle className="w-12 h-12" />,
-      link: '/student/syllabus',
-      color: 'text-red-600 dark:text-red-400',
-      bgColor: 'bg-red-50 dark:bg-red-950/30'
-    },
-    {
       title: 'Gallery',
       icon: <Clock className="w-12 h-12" />,
       link: '/student/gallery',
@@ -117,7 +108,7 @@ export default function StudentDashboard() {
       bgColor: 'bg-amber-50 dark:bg-amber-950/30'
     },
     {
-      title: 'Messages',
+      title: 'Student Profile',
       icon: <MessageSquare className="w-12 h-12" />,
       link: '/student/profile',
       color: 'text-emerald-600 dark:text-emerald-400',
@@ -134,9 +125,6 @@ export default function StudentDashboard() {
           {/* Welcome Section */}
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-primary mb-2 text-right md:text-left">Welcome, {user.name}!</h1>
-            <p className="text-muted-foreground">
-              Year: <Badge className="ml-2">{user.year}</Badge>
-            </p>
           </div>
 
           {/* Categories Grid */}
