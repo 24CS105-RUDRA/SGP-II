@@ -41,17 +41,17 @@ export default function SchoolInfoPage() {
       {/* Navigation Header */}
       <nav className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
         <div className="w-full px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-24 gap-6">
-            <div className="flex items-center gap-3 flex-1">
-              <div className="flex flex-col">
-                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-primary">Shree Sardar Patel <span className="text-accent">Vidhya Sankul</span></h1>
-                <p className="text-xs sm:text-sm text-muted-foreground">Santokba Dholakiya Educational Campus · Managed by Shree Saurashtra Leuva Patel Seva Samaj, Navsari</p>
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 md:gap-6 py-4 md:h-24">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <div className="flex flex-col min-w-0">
+                <h1 className="text-lg sm:text-2xl lg:text-4xl font-bold text-primary truncate">Shree Sardar Patel <span className="text-accent">Vidhya Sankul</span></h1>
+                <p className="text-xs sm:text-sm text-muted-foreground">Santokba Dholakiya Educational Campus-Managed by Shree Saurashtra Leuva Patel Seva Samaj, Navsari</p>
               </div>
             </div>
             <Button
               onClick={handleLoginClick}
-              size="lg"
-              className="bg-primary hover:bg-primary/90 text-primary-foreground whitespace-nowrap font-semibold text-base"
+              size="sm"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground whitespace-nowrap font-semibold text-sm md:text-base md:size-lg"
             >
               Login
             </Button>
@@ -60,25 +60,25 @@ export default function SchoolInfoPage() {
       </nav>
 
       {/* Navigation Menu Bar */}
-      <nav className="sticky top-24 z-40 border-b border-border bg-card">
+      <nav className="sticky top-[72px] sm:top-24 z-40 border-b border-border bg-card">
         <div className="w-full px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-center gap-8 h-14">
-            <button onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})} className="text-sm font-medium text-foreground hover:text-primary transition-colors cursor-pointer">
+          <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-6 lg:gap-8 py-2 sm:h-14">
+            <button onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})} className="text-xs sm:text-sm font-medium text-foreground hover:text-primary transition-colors cursor-pointer">
               Home
             </button>
-            <a href="#about" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+            <a href="#about" className="text-xs sm:text-sm font-medium text-foreground hover:text-primary transition-colors">
               About
             </a>
-            <a href="#programs" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+            <a href="#programs" className="text-xs sm:text-sm font-medium text-foreground hover:text-primary transition-colors">
               Education
             </a>
-            <a href="#activities" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+            <a href="#activities" className="text-xs sm:text-sm font-medium text-foreground hover:text-primary transition-colors">
               Activities
             </a>
-            <a href="#achievements" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+            <a href="#achievements" className="text-xs sm:text-sm font-medium text-foreground hover:text-primary transition-colors">
               Achievements
             </a>
-            <a href="#contact" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+            <a href="#contact" className="text-xs sm:text-sm font-medium text-foreground hover:text-primary transition-colors">
               Contact
             </a>
           </div>
@@ -453,11 +453,11 @@ export default function SchoolInfoPage() {
           </div>
           
           {/* Outcomes Table Structure */}
-          <div className="border border-border rounded-lg overflow-hidden bg-white dark:bg-slate-950">
+          <div className="border border-border rounded-lg overflow-x-auto bg-white dark:bg-slate-950">
             {/* Header Row */}
-            <div className="grid grid-cols-2 border-b border-border bg-primary text-primary-foreground">
-              <div className="px-6 py-4 text-sm font-semibold uppercase tracking-wide">Activity & Implementation</div>
-              <div className="px-6 py-4 text-sm font-semibold uppercase tracking-wide">Benefits / Outcomes</div>
+            <div className="grid grid-cols-1 md:grid-cols-2 border-b border-border bg-primary text-primary-foreground">
+              <div className="px-3 sm:px-6 py-4 text-xs sm:text-sm font-semibold uppercase tracking-wide">Activity & Implementation</div>
+              <div className="hidden md:block px-3 sm:px-6 py-4 text-xs sm:text-sm font-semibold uppercase tracking-wide border-l border-primary-foreground/30">Benefits / Outcomes</div>
             </div>
 
             {/* Data Rows */}
@@ -520,14 +520,14 @@ export default function SchoolInfoPage() {
                 ],
               },
             ].map((section, idx) => (
-              <div key={idx} className="grid grid-cols-2 border-b border-border last:border-b-0">
+              <div key={idx} className="grid grid-cols-1 md:grid-cols-2 border-b border-border last:border-b-0">
                 {/* Left Column - Activity & Implementation */}
-                <div className="px-6 py-6 bg-primary/5 border-r border-border">
-                  <div className="text-sm font-semibold text-foreground mb-3">{section.title}</div>
+                <div className="px-3 sm:px-6 py-6 bg-primary/5 border-b md:border-b-0 md:border-r border-border">
+                  <div className="text-xs sm:text-sm font-semibold text-foreground mb-3">{section.title}</div>
                   <ul className="space-y-2">
                     {section.activities.map((activity, i) => (
                       <li key={i} className="text-xs text-foreground/80 flex gap-2">
-                        <span className="text-primary flex-shrink-0 mt-1">→</span>
+                        <span className="text-primary flex-shrink-0 mt-0.5">→</span>
                         <span>{activity}</span>
                       </li>
                     ))}
@@ -535,12 +535,12 @@ export default function SchoolInfoPage() {
                 </div>
 
                 {/* Right Column - Benefits / Outcomes */}
-                <div className="px-6 py-6 bg-background">
-                  <div className="text-sm font-semibold text-foreground mb-3">Benefits / Outcomes</div>
+                <div className="px-3 sm:px-6 py-6 bg-background">
+                  <div className="text-xs sm:text-sm font-semibold text-foreground mb-3">Benefits / Outcomes</div>
                   <ul className="space-y-2">
                     {section.benefits.map((benefit, i) => (
                       <li key={i} className="text-xs text-foreground/80 flex gap-2">
-                        <span className="text-primary flex-shrink-0 mt-1">→</span>
+                        <span className="text-primary flex-shrink-0 mt-0.5">→</span>
                         <span>{benefit}</span>
                       </li>
                     ))}
