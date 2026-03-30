@@ -1,4 +1,4 @@
-import { v2 as cloudinary, UploadApiResponse, UploadApiErrorResponse } from 'cloudinary'
+import { v2 as cloudinary, UploadApiResponse, UploadApiErrorResponse, TransformationOptions } from 'cloudinary'
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -14,6 +14,87 @@ export type UploadResult = {
 }
 
 export type ResourceType = 'image' | 'video' | 'raw' | 'auto'
+
+export interface ImageTransformOptions {
+  width?: number
+  height?: number
+  crop?: 'fill' | 'fit' | 'scale' | 'crop' | 'thumb'
+  quality?: 'auto' | 'auto:low' | 'auto:eco' | 'auto:good' | 'auto:best' | number
+  format?: 'auto' | 'webp' | 'avif' | 'jpg' | 'png'
+  gravity?: 'auto' | 'face' | 'center' | 'north' | 'south' | 'east' | 'west'
+  effect?: string
+  blur?: number
+  grayscale?: boolean
+}
+
+const DEFAULT_THUMBNAIL: ImageTransformOptions = {
+  width: 300,
+  height: 300,
+  crop: 'fill',
+  quality: 'auto',
+  format: 'auto',
+  gravity: 'auto',
+}
+
+const DEFAULT_OPTIMIZED: ImageTransformOptions = {
+  quality: 'auto',
+  format: 'auto',
+}
+
+export function getOptimizedImageUrl(publicId: string, options: ImageTransformOptions = {}): string {
+  const transformOptions: TransformationOptions = {
+    ...DEFAULT_OPTIMIZED,
+    ...options,
+    fetch_format: 'auto',
+    quality: 'auto',
+  }
+  
+  return cloudinary.url(publicId, transformOptions)
+}
+
+export function getThumbnailUrl(publicId: string, options: ImageTransformOptions = {}): string {
+  const transformOptions: TransformationOptions = {
+    ...DEFAULT_THUMBNAIL,
+    ...options,
+    fetch_format: 'auto',
+    quality: 'auto',
+  }
+  
+  return cloudinary.url(publicId, transformOptions)
+}
+
+export function getResponsiveImageUrl(
+  publicId: string,
+  widths: number[] = [400, 800, 1200, 1600]
+): string[] {
+  return widths.map(width => 
+    cloudinary.url(publicId, {
+      width,
+      crop: 'scale',
+      quality: 'auto',
+      fetch_format: 'auto',
+    })
+  )
+}
+
+export function getBlurPlaceholder(publicId: string): string {
+  return cloudinary.url(publicId, {
+    width: 30,
+    quality: 'auto:low',
+    fetch_format: 'auto',
+    effect: 'blur:1000',
+  })
+}
+
+export function getGalleryImageUrl(publicId: string, width: number = 800): string {
+  return cloudinary.url(publicId, {
+    width,
+    crop: 'fill',
+    quality: 'auto',
+    fetch_format: 'auto',
+    gravity: 'auto',
+  })
+}
 
 export async function uploadFile(
   file: File | Buffer,
