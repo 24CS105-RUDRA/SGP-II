@@ -356,9 +356,9 @@ export default function FeesPage() {
       <AdminSidebar activeSection="fees" />
 
       <main className="flex-1 overflow-auto">
-        <div className="p-4 pl-16 md:p-8">
+        <div className="p-4 md:p-8">
           <div className="flex items-center justify-between mb-8">
-            <h1 className="text-3xl font-bold text-primary">Fees Management</h1>
+            <h1 className="text-3xl font-bold text-primary ml-5 md:ml-0">Fees Management</h1>
             <Button onClick={() => setIsCreateDialogOpen(true)} className="flex items-center gap-2">
               <Plus className="w-4 h-4" />
               Create Fee Structure

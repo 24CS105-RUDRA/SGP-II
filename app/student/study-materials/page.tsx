@@ -123,7 +123,7 @@ export default function StudyMaterialsPage() {
       <div className="flex min-h-screen bg-background">
         <StudentSidebar activeSection="study-materials" />
         <main className="flex-1 overflow-auto">
-          <div className="p-4 pl-16 md:p-8">
+          <div className="p-4 md:p-8">
             <Card className="border-red-200 bg-red-50 dark:bg-red-950/20">
               <CardContent className="p-6">
                 <p className="text-red-600 dark:text-red-400">{error}</p>
@@ -263,8 +263,8 @@ export default function StudyMaterialsPage() {
       <StudentSidebar activeSection="study-materials" />
 
       <main className="flex-1 overflow-auto">
-        <div className="p-4 pl-16 md:p-8">
-          <h1 className="text-3xl font-bold text-primary mb-2">Study Materials</h1>
+        <div className="p-4 md:p-8">
+          <h1 className="text-3xl font-bold text-primary mb-2 ml-5 md:ml-0">Study Materials</h1>
           <p className="text-muted-foreground mb-8">({folders.length} folders, {materials.length} root materials)</p>
 
           {folders.length === 0 && materials.length === 0 ? (

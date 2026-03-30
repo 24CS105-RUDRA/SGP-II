@@ -94,8 +94,8 @@ export default function StudentNoticeBoardPage() {
       <StudentSidebar activeSection="notice-board" />
 
       <main className="flex-1 overflow-auto">
-        <div className="p-4 pl-16 md:p-8">
-          <h1 className="text-3xl font-bold text-primary mb-8">Notice Board</h1>
+        <div className="p-4 md:p-8">
+          <h1 className="text-3xl font-bold text-primary mb-8 ml-5 md:ml-0">Notice Board</h1>
 
           {urgentNotices.length > 0 && (
             <Card className="mb-8 border-2 border-red-500">

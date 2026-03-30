@@ -106,8 +106,8 @@ export default function HomeworkPage() {
       <StudentSidebar activeSection="homework" />
 
       <main className="flex-1 overflow-auto">
-        <div className="p-4 pl-16 md:p-8">
-          <h1 className="text-3xl font-bold text-primary mb-2">Homework</h1>
+        <div className="p-4 md:p-8">
+          <h1 className="text-3xl font-bold text-primary mb-2 ml-5 md:ml-0">Homework</h1>
           <p className="text-muted-foreground mb-8">({homeworks.length} assignments)</p>
 
           {homeworks.length === 0 ? (

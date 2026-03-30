@@ -79,10 +79,10 @@ export default function StudentGalleryPage() {
       <StudentSidebar activeSection="gallery" />
 
       <main className="flex-1 overflow-auto">
-        <div className="p-4 pl-16 md:p-8">
+        <div className="p-4 md:p-8">
           {!selectedEvent ? (
             <>
-              <h1 className="text-3xl font-bold text-primary mb-8">School Gallery</h1>
+              <h1 className="text-3xl font-bold text-primary mb-8 ml-5 md:ml-0">School Gallery</h1>
 
               {/* Events Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

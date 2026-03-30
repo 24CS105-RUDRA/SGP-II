@@ -407,10 +407,10 @@ export default function StudyMaterialsPage() {
       <FacultySidebar activeSection="study-materials" />
 
       <main className="flex-1 overflow-auto">
-        <div className="p-4 pl-16 md:p-8">
+        <div className="p-4 md:p-8">
           <div className="flex justify-between items-center mb-8">
             <div>
-              <h1 className="text-3xl font-bold text-primary mb-2">Study Materials</h1>
+              <h1 className="text-3xl font-bold text-primary mb-2 ml-5 md:ml-0">Study Materials</h1>
               <p className="text-muted-foreground">Upload and organize study materials for your students</p>
             </div>
             <div className="flex gap-2">

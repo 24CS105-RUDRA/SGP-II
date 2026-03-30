@@ -79,10 +79,10 @@ export default function StudentFacultyInfo() {
       <StudentSidebar activeSection="faculty-info" />
 
       <main className="flex-1 overflow-auto">
-        <div className="p-4 pl-16 md:p-8">
+        <div className="p-4 md:p-8">
           {/* Header */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-primary mb-2">Faculty Information</h1>
+            <h1 className="text-3xl font-bold text-primary mb-2 ml-5 md:ml-0">Faculty Information</h1>
             <p className="text-muted-foreground">
               Your class: {user.standard}-{user.division}
             </p>

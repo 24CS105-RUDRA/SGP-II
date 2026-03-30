@@ -173,10 +173,10 @@ export default function FacultyClassManagement() {
       <AdminSidebar activeSection="faculty-class" />
 
       <main className="flex-1 overflow-auto">
-        <div className="p-4 pl-16 md:p-8">
+        <div className="p-4 md:p-8">
           {/* Header */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-primary mb-2">Faculty Class Management</h1>
+            <h1 className="text-3xl font-bold text-primary mb-2 ml-5 md:ml-0">Faculty Class Management</h1>
             <p className="text-muted-foreground">Assign faculty to classes with subjects</p>
           </div>
 

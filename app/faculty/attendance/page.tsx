@@ -202,8 +202,8 @@ export default function AttendancePage() {
       <FacultySidebar activeSection="attendance" />
 
       <main className="flex-1 overflow-auto">
-        <div className="p-4 pl-16 md:p-8">
-          <h1 className="text-3xl font-bold text-primary mb-8">Mark Attendance</h1>
+        <div className="p-4 md:p-8">
+          <h1 className="text-3xl font-bold text-primary mb-8 ml-5 md:ml-0">Mark Attendance</h1>
 
           {/* Date & Class Selection */}
           <Card className="mb-8">

@@ -99,8 +99,8 @@ export default function StudentProfilePage() {
       <StudentSidebar activeSection="profile" />
 
       <main className="flex-1 overflow-auto">
-        <div className="p-4 pl-16 md:p-8">
-          <h1 className="text-3xl font-bold text-primary mb-8">Student Profile</h1>
+        <div className="p-4 md:p-8">
+          <h1 className="text-3xl font-bold text-primary mb-8 ml-5 md:ml-0">Student Profile</h1>
 
           {/* Personal Information */}
           <Card className="mb-6">

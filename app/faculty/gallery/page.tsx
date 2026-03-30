@@ -291,9 +291,9 @@ export default function FacultyGalleryPage() {
       <FacultySidebar activeSection="gallery" />
 
       <main className="flex-1 overflow-auto">
-        <div className="p-4 pl-16 md:p-8">
+        <div className="p-4 md:p-8">
           <div className="mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <h1 className="text-3xl font-bold text-primary">Gallery Management</h1>
+            <h1 className="text-3xl font-bold text-primary ml-5 md:ml-0">Gallery Management</h1>
             <Button
               onClick={() => setShowEventForm(!showEventForm)}
               className="bg-primary hover:bg-primary/90 flex items-center gap-2"

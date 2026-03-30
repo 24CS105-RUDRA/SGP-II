@@ -38,52 +38,39 @@ export default function SchoolInfoPage() {
 
   return (
     <main className="min-h-screen bg-background">
-      {/* Navigation Header */}
-      <nav className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
-        <div className="w-full px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 md:gap-6 py-4 md:h-24">
+      {/* Navigation Header - Sticky */}
+      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur">
+        <div className="w-full px-4 sm:px-6 lg:px-8 border-b border-border">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-2 md:gap-6 py-3 md:py-0 md:h-20">
             <div className="flex items-center gap-3 flex-1 min-w-0">
               <div className="flex flex-col min-w-0">
-                <h1 className="text-lg sm:text-2xl lg:text-4xl font-bold text-primary truncate">Shree Sardar Patel <span className="text-accent">Vidhya Sankul</span></h1>
+                <h1 className="text-lg sm:text-2xl lg:text-3xl font-bold text-primary truncate">Shree Sardar Patel <span className="text-accent">Vidhya Sankul</span></h1>
                 <p className="text-xs sm:text-sm text-muted-foreground">Santokba Dholakiya Educational Campus-Managed by Shree Saurashtra Leuva Patel Seva Samaj, Navsari</p>
               </div>
             </div>
             <Button
               onClick={handleLoginClick}
               size="sm"
-              className="bg-primary hover:bg-primary/90 text-primary-foreground whitespace-nowrap font-semibold text-sm md:text-base md:size-lg"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground whitespace-nowrap font-semibold text-sm md:text-base"
             >
               Login
             </Button>
           </div>
         </div>
-      </nav>
-
-      {/* Navigation Menu Bar */}
-      <nav className="sticky top-[72px] sm:top-24 z-40 border-b border-border bg-card">
-        <div className="w-full px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-6 lg:gap-8 py-2 sm:h-14">
-            <button onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})} className="text-xs sm:text-sm font-medium text-foreground hover:text-primary transition-colors cursor-pointer">
-              Home
-            </button>
-            <a href="#about" className="text-xs sm:text-sm font-medium text-foreground hover:text-primary transition-colors">
-              About
-            </a>
-            <a href="#programs" className="text-xs sm:text-sm font-medium text-foreground hover:text-primary transition-colors">
-              Education
-            </a>
-            <a href="#activities" className="text-xs sm:text-sm font-medium text-foreground hover:text-primary transition-colors">
-              Activities
-            </a>
-            <a href="#achievements" className="text-xs sm:text-sm font-medium text-foreground hover:text-primary transition-colors">
-              Achievements
-            </a>
-            <a href="#contact" className="text-xs sm:text-sm font-medium text-foreground hover:text-primary transition-colors">
-              Contact
-            </a>
+        {/* Navigation Menu Bar */}
+        <nav className="border-b border-border bg-card">
+          <div className="w-full px-4 sm:px-6 lg:px-8">
+            <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-6 lg:gap-8 py-2 sm:h-14">
+              <button onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})} className="text-xs sm:text-sm font-medium text-foreground hover:text-primary transition-colors cursor-pointer">Home</button>
+              <a href="#about" className="text-xs sm:text-sm font-medium text-foreground hover:text-primary transition-colors">About</a>
+              <a href="#programs" className="text-xs sm:text-sm font-medium text-foreground hover:text-primary transition-colors">Education</a>
+              <a href="#activities" className="text-xs sm:text-sm font-medium text-foreground hover:text-primary transition-colors">Activities</a>
+              <a href="#achievements" className="text-xs sm:text-sm font-medium text-foreground hover:text-primary transition-colors">Achievements</a>
+              <a href="#contact" className="text-xs sm:text-sm font-medium text-foreground hover:text-primary transition-colors">Contact</a>
+            </div>
           </div>
-        </div>
-      </nav>
+        </nav>
+      </header>
 
       {/* Auto-Sliding Carousel */}
       <section id="carousel" className="py-8 px-4 sm:px-6 lg:px-8 bg-background">

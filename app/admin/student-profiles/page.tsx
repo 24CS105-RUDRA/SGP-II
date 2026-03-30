@@ -307,9 +307,9 @@ const getStudentsForClassDivision = (classNum: string, division: string) => {
       <AdminSidebar activeSection="student-profiles" />
 
       <main className="flex-1 overflow-auto">
-        <div className="p-4 pl-16 md:p-8">
+        <div className="p-4 md:p-8">
           <div className="mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <h1 className="text-3xl font-bold text-primary">Student Profiles</h1>
+            <h1 className="text-3xl font-bold text-primary ml-5 md:ml-0">Student Profiles</h1>
             <Button onClick={() => setShowForm(!showForm)} className="bg-primary hover:bg-primary/90 flex items-center gap-2">
               <Plus className="w-4 h-4" />
               Add New Student
